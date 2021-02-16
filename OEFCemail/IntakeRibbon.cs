@@ -14,7 +14,7 @@ namespace OEFCemail
 
         }
 
-        private void toggleButtonIntakeDisplay_Click(object sender, RibbonControlEventArgs e)
+        private void ToggleButtonIntakeDisplay_Click(object sender, RibbonControlEventArgs e)
         {
             Globals.ThisAddIn.TaskPane.Visible = ((RibbonToggleButton)sender).Checked;
         }

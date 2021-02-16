@@ -53,7 +53,7 @@ namespace OEFCemail
             // 
             this.toggleButtonIntakeDisplay.Label = "Toggel Intake Panel";
             this.toggleButtonIntakeDisplay.Name = "toggleButtonIntakeDisplay";
-            this.toggleButtonIntakeDisplay.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.toggleButtonIntakeDisplay_Click);
+            this.toggleButtonIntakeDisplay.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ToggleButtonIntakeDisplay_Click);
             // 
             // Tab1
             // 

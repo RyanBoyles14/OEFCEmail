@@ -22,7 +22,7 @@ namespace OEFCemail
         {
             myIntakeControl1 = new IntakeControl1();
             intakeTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "My Task Pane");
-            intakeTaskPane.VisibleChanged += new EventHandler(intakeTaskPane_VisibleChanged);
+            intakeTaskPane.VisibleChanged += new EventHandler(IntakeTaskPane_VisibleChanged);
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
@@ -45,7 +45,7 @@ namespace OEFCemail
 
         #endregion
 
-        private void intakeTaskPane_VisibleChanged(object sender, System.EventArgs e)
+        private void IntakeTaskPane_VisibleChanged(object sender, System.EventArgs e)
         {
             Globals.Ribbons.IntakeRibbon.toggleButtonIntakeDisplay.Checked =
                 intakeTaskPane.Visible;

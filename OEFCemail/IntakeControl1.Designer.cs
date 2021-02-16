@@ -30,17 +30,19 @@ namespace OEFCemail
         private void InitializeComponent()
         {
             this.panel1 = new System.Windows.Forms.Panel();
-            this.textBoxReceiver = new System.Windows.Forms.TextBox();
-            this.textBoxSender = new System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.textBoxTime = new System.Windows.Forms.TextBox();
+            this.buttonAutoFill = new System.Windows.Forms.Button();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.textBoxAttach = new System.Windows.Forms.TextBox();
             this.textBoxContent = new System.Windows.Forms.TextBox();
-            this.buttonAutoFill = new System.Windows.Forms.Button();
+            this.textBoxTime = new System.Windows.Forms.TextBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
+            this.textBoxSender = new System.Windows.Forms.TextBox();
+            this.textBoxReceiver = new System.Windows.Forms.TextBox();
+            this.buttonSaveEmail = new System.Windows.Forms.Button();
+            this.buttonAppend = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -48,6 +50,8 @@ namespace OEFCemail
             // 
             this.panel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.panel1.BackColor = System.Drawing.SystemColors.Control;
+            this.panel1.Controls.Add(this.buttonAppend);
+            this.panel1.Controls.Add(this.buttonSaveEmail);
             this.panel1.Controls.Add(this.buttonAutoFill);
             this.panel1.Controls.Add(this.label5);
             this.panel1.Controls.Add(this.label4);
@@ -64,64 +68,17 @@ namespace OEFCemail
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(400, 700);
             this.panel1.TabIndex = 0;
-            this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.panel1_Paint);
+            this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.Panel1_Paint);
             // 
-            // textBoxReceiver
+            // buttonAutoFill
             // 
-            this.textBoxReceiver.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxReceiver.Location = new System.Drawing.Point(85, 67);
-            this.textBoxReceiver.Multiline = true;
-            this.textBoxReceiver.Name = "textBoxReceiver";
-            this.textBoxReceiver.Size = new System.Drawing.Size(294, 39);
-            this.textBoxReceiver.TabIndex = 1;
-            // 
-            // textBoxSender
-            // 
-            this.textBoxSender.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxSender.Location = new System.Drawing.Point(85, 13);
-            this.textBoxSender.Multiline = true;
-            this.textBoxSender.Name = "textBoxSender";
-            this.textBoxSender.Size = new System.Drawing.Size(294, 39);
-            this.textBoxSender.TabIndex = 2;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(38, 16);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(41, 13);
-            this.label1.TabIndex = 3;
-            this.label1.Text = "Sender";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(29, 70);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(50, 13);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "Receiver";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(49, 124);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(30, 13);
-            this.label3.TabIndex = 6;
-            this.label3.Text = "Time";
-            // 
-            // textBoxTime
-            // 
-            this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
-            this.textBoxTime.Location = new System.Drawing.Point(85, 121);
-            this.textBoxTime.Name = "textBoxTime";
-            this.textBoxTime.Size = new System.Drawing.Size(294, 20);
-            this.textBoxTime.TabIndex = 7;
+            this.buttonAutoFill.Location = new System.Drawing.Point(20, 453);
+            this.buttonAutoFill.Name = "buttonAutoFill";
+            this.buttonAutoFill.Size = new System.Drawing.Size(117, 23);
+            this.buttonAutoFill.TabIndex = 14;
+            this.buttonAutoFill.Text = "AutoFill";
+            this.buttonAutoFill.UseVisualStyleBackColor = true;
+            this.buttonAutoFill.Click += new System.EventHandler(this.ButtonAutoFill_Click);
             // 
             // label5
             // 
@@ -164,15 +121,81 @@ namespace OEFCemail
             this.textBoxContent.Size = new System.Drawing.Size(359, 199);
             this.textBoxContent.TabIndex = 10;
             // 
-            // buttonAutoFill
+            // textBoxTime
             // 
-            this.buttonAutoFill.Location = new System.Drawing.Point(20, 453);
-            this.buttonAutoFill.Name = "buttonAutoFill";
-            this.buttonAutoFill.Size = new System.Drawing.Size(75, 23);
-            this.buttonAutoFill.TabIndex = 14;
-            this.buttonAutoFill.Text = "AutoFill";
-            this.buttonAutoFill.UseVisualStyleBackColor = true;
-            this.buttonAutoFill.Click += new System.EventHandler(this.buttonAutoFill_Click);
+            this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
+            this.textBoxTime.Location = new System.Drawing.Point(85, 121);
+            this.textBoxTime.Name = "textBoxTime";
+            this.textBoxTime.Size = new System.Drawing.Size(294, 20);
+            this.textBoxTime.TabIndex = 7;
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(49, 124);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(30, 13);
+            this.label3.TabIndex = 6;
+            this.label3.Text = "Time";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(29, 70);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(50, 13);
+            this.label2.TabIndex = 4;
+            this.label2.Text = "Receiver";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(38, 16);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(41, 13);
+            this.label1.TabIndex = 3;
+            this.label1.Text = "Sender";
+            // 
+            // textBoxSender
+            // 
+            this.textBoxSender.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBoxSender.Location = new System.Drawing.Point(85, 13);
+            this.textBoxSender.Multiline = true;
+            this.textBoxSender.Name = "textBoxSender";
+            this.textBoxSender.Size = new System.Drawing.Size(294, 39);
+            this.textBoxSender.TabIndex = 2;
+            // 
+            // textBoxReceiver
+            // 
+            this.textBoxReceiver.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBoxReceiver.Location = new System.Drawing.Point(85, 67);
+            this.textBoxReceiver.Multiline = true;
+            this.textBoxReceiver.Name = "textBoxReceiver";
+            this.textBoxReceiver.Size = new System.Drawing.Size(294, 39);
+            this.textBoxReceiver.TabIndex = 1;
+            // 
+            // buttonSaveEmail
+            // 
+            this.buttonSaveEmail.Location = new System.Drawing.Point(20, 495);
+            this.buttonSaveEmail.Name = "buttonSaveEmail";
+            this.buttonSaveEmail.Size = new System.Drawing.Size(117, 23);
+            this.buttonSaveEmail.TabIndex = 15;
+            this.buttonSaveEmail.Text = "Save Email To File";
+            this.buttonSaveEmail.UseVisualStyleBackColor = true;
+            this.buttonSaveEmail.Click += new System.EventHandler(this.ButtonSaveEmail_Click);
+            // 
+            // buttonAppend
+            // 
+            this.buttonAppend.Location = new System.Drawing.Point(20, 537);
+            this.buttonAppend.Name = "buttonAppend";
+            this.buttonAppend.Size = new System.Drawing.Size(117, 23);
+            this.buttonAppend.TabIndex = 17;
+            this.buttonAppend.Text = "Save to Notes";
+            this.buttonAppend.UseVisualStyleBackColor = true;
             // 
             // IntakeControl1
             // 
@@ -203,5 +226,7 @@ namespace OEFCemail
         private System.Windows.Forms.TextBox textBoxAttach;
         private System.Windows.Forms.TextBox textBoxContent;
         private System.Windows.Forms.Button buttonAutoFill;
+        private System.Windows.Forms.Button buttonAppend;
+        private System.Windows.Forms.Button buttonSaveEmail;
     }
 }
