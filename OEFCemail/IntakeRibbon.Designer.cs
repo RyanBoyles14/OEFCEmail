@@ -1,14 +1,14 @@
 ﻿
 namespace OEFCemail
 {
-    partial class IntakeRibbon : Microsoft.Office.Tools.Ribbon.RibbonBase
+    partial class IntakeRibbon1 : Microsoft.Office.Tools.Ribbon.RibbonBase
     {
         /// <summary>
         /// Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        public IntakeRibbon()
+        public IntakeRibbon1()
             : base(Globals.Factory.GetRibbonFactory())
         {
             InitializeComponent();
@@ -36,46 +36,46 @@ namespace OEFCemail
         private void InitializeComponent()
         {
             Microsoft.Office.Tools.Ribbon.RibbonGroup Test;
-            this.IntakeTab = this.Factory.CreateRibbonTab();
+            this.IntakeTab1 = this.Factory.CreateRibbonTab();
             Test = this.Factory.CreateRibbonGroup();
-            this.IntakeTab.SuspendLayout();
+            this.IntakeTab1.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // IntakeTab
-            // 
-            this.IntakeTab.ControlId.ControlIdType = Microsoft.Office.Tools.Ribbon.RibbonControlIdType.Office;
-            this.IntakeTab.Groups.Add(Test);
-            this.IntakeTab.Label = "Email Intake";
-            this.IntakeTab.Name = "IntakeTab";
             // 
             // Test
             // 
-            Test.Label = "test";
+            Test.Label = "Show User Control";
             Test.Name = "Test";
             Test.DialogLauncherClick += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.Test_DialogLauncherClick);
             // 
-            // IntakeRibbon
+            // IntakeTab1
             // 
-            this.Name = "IntakeRibbon";
+            this.IntakeTab1.ControlId.ControlIdType = Microsoft.Office.Tools.Ribbon.RibbonControlIdType.Office;
+            this.IntakeTab1.Groups.Add(Test);
+            this.IntakeTab1.Label = "Email Intake";
+            this.IntakeTab1.Name = "IntakeTab1";
+            // 
+            // IntakeRibbon1
+            // 
+            this.Name = "IntakeRibbon1";
             this.RibbonType = "Microsoft.Outlook.Explorer";
-            this.Tabs.Add(this.IntakeTab);
-            this.Load += new Microsoft.Office.Tools.Ribbon.RibbonUIEventHandler(this.Ribbon2_Load);
-            this.IntakeTab.ResumeLayout(false);
-            this.IntakeTab.PerformLayout();
+            this.Tabs.Add(this.IntakeTab1);
+            this.Load += new Microsoft.Office.Tools.Ribbon.RibbonUIEventHandler(this.IntakeRibbon_Load);
+            this.IntakeTab1.ResumeLayout(false);
+            this.IntakeTab1.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        internal Microsoft.Office.Tools.Ribbon.RibbonTab IntakeTab;
+        internal Microsoft.Office.Tools.Ribbon.RibbonTab IntakeTab1;
     }
 
     partial class ThisRibbonCollection
     {
-        internal IntakeRibbon Ribbon2
+        internal IntakeRibbon1 Ribbon2
         {
-            get { return this.GetRibbon<IntakeRibbon>(); }
+            get { return this.GetRibbon<IntakeRibbon1>(); }
         }
     }
 }

@@ -12,13 +12,15 @@ namespace OEFCemail
     public partial class ThisAddIn
     {
 
-        Outlook.Inspectors inspectors;
+        private IntakeControl1 myIntakeControl1;
+        private Microsoft.Office.Tools.CustomTaskPane myCustomTaskPane;
+
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
-            inspectors = this.Application.Inspectors;
-            inspectors.NewInspector +=
-            new Microsoft.Office.Interop.Outlook.InspectorsEvents_NewInspectorEventHandler(Inspectors_NewInspector);
+            myIntakeControl1 = new IntakeControl1();
+            myCustomTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "My Task Pane");
+            myCustomTaskPane.Visible = false;
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
@@ -27,18 +29,6 @@ namespace OEFCemail
             //    must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785
         }
 
-        void Inspectors_NewInspector(Microsoft.Office.Interop.Outlook.Inspector Inspector)
-        {
-            Outlook.MailItem mailItem = Inspector.CurrentItem as Outlook.MailItem;
-            if (mailItem != null)
-            {
-                if (mailItem.EntryID == null)
-                {
-                    
-                }
-
-            }
-        }
 
         #region VSTO generated code
 

@@ -6,9 +6,10 @@ using System.Text;
 
 namespace OEFCemail
 {
-    public partial class IntakeRibbon
+    public partial class IntakeRibbon1
     {
-        private void Ribbon2_Load(object sender, RibbonUIEventArgs e)
+
+        private void IntakeRibbon_Load(object sender, RibbonUIEventArgs e)
         {
 
         }
