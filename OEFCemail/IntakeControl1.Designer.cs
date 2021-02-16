@@ -30,16 +30,17 @@ namespace OEFCemail
         private void InitializeComponent()
         {
             this.panel1 = new System.Windows.Forms.Panel();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.textBoxReceiver = new System.Windows.Forms.TextBox();
+            this.textBoxSender = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.textBox4 = new System.Windows.Forms.TextBox();
+            this.textBoxTime = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.textBox5 = new System.Windows.Forms.TextBox();
-            this.textBox3 = new System.Windows.Forms.TextBox();
+            this.textBoxAttach = new System.Windows.Forms.TextBox();
+            this.textBoxContent = new System.Windows.Forms.TextBox();
+            this.buttonAutoFill = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -47,16 +48,17 @@ namespace OEFCemail
             // 
             this.panel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.panel1.BackColor = System.Drawing.SystemColors.Control;
+            this.panel1.Controls.Add(this.buttonAutoFill);
             this.panel1.Controls.Add(this.label5);
             this.panel1.Controls.Add(this.label4);
-            this.panel1.Controls.Add(this.textBox5);
-            this.panel1.Controls.Add(this.textBox3);
-            this.panel1.Controls.Add(this.textBox4);
+            this.panel1.Controls.Add(this.textBoxAttach);
+            this.panel1.Controls.Add(this.textBoxContent);
+            this.panel1.Controls.Add(this.textBoxTime);
             this.panel1.Controls.Add(this.label3);
             this.panel1.Controls.Add(this.label2);
             this.panel1.Controls.Add(this.label1);
-            this.panel1.Controls.Add(this.textBox1);
-            this.panel1.Controls.Add(this.textBox2);
+            this.panel1.Controls.Add(this.textBoxSender);
+            this.panel1.Controls.Add(this.textBoxReceiver);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
@@ -64,25 +66,25 @@ namespace OEFCemail
             this.panel1.TabIndex = 0;
             this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.panel1_Paint);
             // 
-            // textBox2
+            // textBoxReceiver
             // 
-            this.textBox2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxReceiver.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox2.Location = new System.Drawing.Point(85, 67);
-            this.textBox2.Multiline = true;
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(294, 39);
-            this.textBox2.TabIndex = 1;
+            this.textBoxReceiver.Location = new System.Drawing.Point(85, 67);
+            this.textBoxReceiver.Multiline = true;
+            this.textBoxReceiver.Name = "textBoxReceiver";
+            this.textBoxReceiver.Size = new System.Drawing.Size(294, 39);
+            this.textBoxReceiver.TabIndex = 1;
             // 
-            // textBox1
+            // textBoxSender
             // 
-            this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxSender.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox1.Location = new System.Drawing.Point(85, 13);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(294, 39);
-            this.textBox1.TabIndex = 2;
+            this.textBoxSender.Location = new System.Drawing.Point(85, 13);
+            this.textBoxSender.Multiline = true;
+            this.textBoxSender.Name = "textBoxSender";
+            this.textBoxSender.Size = new System.Drawing.Size(294, 39);
+            this.textBoxSender.TabIndex = 2;
             // 
             // label1
             // 
@@ -111,15 +113,15 @@ namespace OEFCemail
             this.label3.TabIndex = 6;
             this.label3.Text = "Time";
             // 
-            // textBox4
+            // textBoxTime
             // 
-            this.textBox4.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox4.BackColor = System.Drawing.SystemColors.Window;
-            this.textBox4.Location = new System.Drawing.Point(85, 121);
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(294, 20);
-            this.textBox4.TabIndex = 7;
+            this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
+            this.textBoxTime.Location = new System.Drawing.Point(85, 121);
+            this.textBoxTime.Name = "textBoxTime";
+            this.textBoxTime.Size = new System.Drawing.Size(294, 20);
+            this.textBoxTime.TabIndex = 7;
             // 
             // label5
             // 
@@ -139,28 +141,38 @@ namespace OEFCemail
             this.label4.TabIndex = 12;
             this.label4.Text = "Content";
             // 
-            // textBox5
+            // textBoxAttach
             // 
-            this.textBox5.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxAttach.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox5.Location = new System.Drawing.Point(20, 402);
-            this.textBox5.Multiline = true;
-            this.textBox5.Name = "textBox5";
-            this.textBox5.Size = new System.Drawing.Size(359, 34);
-            this.textBox5.TabIndex = 11;
+            this.textBoxAttach.Location = new System.Drawing.Point(20, 402);
+            this.textBoxAttach.Multiline = true;
+            this.textBoxAttach.Name = "textBoxAttach";
+            this.textBoxAttach.Size = new System.Drawing.Size(359, 34);
+            this.textBoxAttach.TabIndex = 11;
             // 
-            // textBox3
+            // textBoxContent
             // 
-            this.textBox3.AcceptsReturn = true;
-            this.textBox3.AcceptsTab = true;
-            this.textBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxContent.AcceptsReturn = true;
+            this.textBoxContent.AcceptsTab = true;
+            this.textBoxContent.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox3.Location = new System.Drawing.Point(20, 174);
-            this.textBox3.Multiline = true;
-            this.textBox3.Name = "textBox3";
-            this.textBox3.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBox3.Size = new System.Drawing.Size(359, 199);
-            this.textBox3.TabIndex = 10;
+            this.textBoxContent.Location = new System.Drawing.Point(20, 174);
+            this.textBoxContent.Multiline = true;
+            this.textBoxContent.Name = "textBoxContent";
+            this.textBoxContent.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.textBoxContent.Size = new System.Drawing.Size(359, 199);
+            this.textBoxContent.TabIndex = 10;
+            // 
+            // buttonAutoFill
+            // 
+            this.buttonAutoFill.Location = new System.Drawing.Point(20, 453);
+            this.buttonAutoFill.Name = "buttonAutoFill";
+            this.buttonAutoFill.Size = new System.Drawing.Size(75, 23);
+            this.buttonAutoFill.TabIndex = 14;
+            this.buttonAutoFill.Text = "AutoFill";
+            this.buttonAutoFill.UseVisualStyleBackColor = true;
+            this.buttonAutoFill.Click += new System.EventHandler(this.buttonAutoFill_Click);
             // 
             // IntakeControl1
             // 
@@ -181,14 +193,15 @@ namespace OEFCemail
 
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.TextBox textBoxSender;
+        private System.Windows.Forms.TextBox textBoxReceiver;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.TextBox textBoxTime;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox textBox5;
-        private System.Windows.Forms.TextBox textBox3;
+        private System.Windows.Forms.TextBox textBoxAttach;
+        private System.Windows.Forms.TextBox textBoxContent;
+        private System.Windows.Forms.Button buttonAutoFill;
     }
 }
