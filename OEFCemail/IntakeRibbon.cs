@@ -6,7 +6,7 @@ using System.Text;
 
 namespace OEFCemail
 {
-    public partial class IntakeRibbon1
+    public partial class IntakeRibbon
     {
 
         private void IntakeRibbon_Load(object sender, RibbonUIEventArgs e)
@@ -14,9 +14,9 @@ namespace OEFCemail
 
         }
 
-        private void Test_DialogLauncherClick(object sender, RibbonControlEventArgs e)
+        private void toggleButtonIntakeDisplay_Click(object sender, RibbonControlEventArgs e)
         {
-
+            Globals.ThisAddIn.TaskPane.Visible = ((RibbonToggleButton)sender).Checked;
         }
     }
 }
