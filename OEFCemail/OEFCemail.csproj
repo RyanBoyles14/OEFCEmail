@@ -171,6 +171,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="IntakeRibbon.resx">
+      <DependentUpon>IntakeRibbon.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="OEFCemail_TemporaryKey.pfx" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -179,6 +182,12 @@
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Include="IntakeRibbon.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="IntakeRibbon.Designer.cs">
+      <DependentUpon>IntakeRibbon.cs</DependentUpon>
     </Compile>
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>

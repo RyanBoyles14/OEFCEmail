@@ -34,8 +34,7 @@ namespace OEFCemail
             {
                 if (mailItem.EntryID == null)
                 {
-                    mailItem.Subject = "This text was added by using code";
-                    mailItem.Body = "This text was added by using code";
+                    
                 }
 
             }
