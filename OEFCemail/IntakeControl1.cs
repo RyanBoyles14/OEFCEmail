@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,22 +42,51 @@ namespace OEFCemail
 
         private void ButtonSaveEmail_Click(object sender, EventArgs e)
         {
-
             Outlook.MailItem item = GetMailItem();
             //TODO parse OEFC specific emails
-            if (item != null)
-            {
-                SaveFileDialog saveFileDialog1 = new SaveFileDialog
-                {
-                    Filter = "Outlook Message File|*.msg",
-                    Title = "Save an Email"
-                };
-                saveFileDialog1.ShowDialog();
+            String dir = GetProjectDirectory();
 
-                // If the file name is not an empty string open it for saving.
-                if (saveFileDialog1.FileName != "")
-                    item.SaveAs(saveFileDialog1.FileName, Outlook.OlSaveAsType.olMSG);
-            }    
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog
+            {
+                Filter = "Outlook Message File|*.msg",
+                Title = "Save an Email",
+                RestoreDirectory = true,
+                InitialDirectory = dir
+            };
+            saveFileDialog1.ShowDialog();
+
+            // If the file name is not an empty string open it for saving.
+            if (saveFileDialog1.FileName != "")
+                item.SaveAs(saveFileDialog1.FileName, Outlook.OlSaveAsType.olMSG);
+
+        }
+
+        // Return file path used for initial filepath for SaveFileDialog
+        private String GetProjectDirectory()
+        {
+            String dir = "G:\\";
+            String prj = this.textBoxProject.Text;
+
+            if (this.radioButtonPrj.Checked && !prj.Equals("")){
+                try {
+                    String path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
+                    if (Directory.EnumerateDirectories(path, prj + "*").Any()) {
+                        String[] s = Directory.GetDirectories(path, prj + "*");
+                        dir = s[0];
+                    }
+                } catch(Exception e) {
+                    MessageBox.Show("Invalid directory. Check if the Project # is correct.");
+                    Console.Write(e);
+                }
+            } else if (this.radioButtonAR.Checked) {
+                //TODO
+                dir += "At Risk\\";
+            } else if (this.radioButtonOH.Checked){
+                //TODO
+                dir += "OverHead Projects (OHPs)\\";
+            }
+
+            return dir;
         }
 
         private Outlook.MailItem GetMailItem()
