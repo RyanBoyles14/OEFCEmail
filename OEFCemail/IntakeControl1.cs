@@ -1,19 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace OEFCemail
 {
     public partial class IntakeControl1 : UserControl
     {
+
+        private bool ProjectTextBoxActive = true;
+
         public IntakeControl1()
         {
             InitializeComponent();
@@ -27,9 +25,10 @@ namespace OEFCemail
         private void ButtonAutoFill_Click(object sender, EventArgs e)
         {
             Outlook.MailItem item = GetMailItem();
-            //TODO parse OEFC specific emails
             if (item != null)
             {
+                //TODO: parsing sender/receiver?
+                //TODO: parse content for better formatting?
                 this.textBoxSender.Text = item.SenderName.ToString();
                 this.textBoxReceiver.Text = item.ReceivedByName;
                 this.textBoxTime.Text = item.ReceivedTime.ToString();
@@ -38,55 +37,6 @@ namespace OEFCemail
                 //this.textBoxAttach.Text =
             }
 
-        }
-
-        private void ButtonSaveEmail_Click(object sender, EventArgs e)
-        {
-            Outlook.MailItem item = GetMailItem();
-            //TODO parse OEFC specific emails
-            String dir = GetProjectDirectory();
-
-            SaveFileDialog saveFileDialog1 = new SaveFileDialog
-            {
-                Filter = "Outlook Message File|*.msg",
-                Title = "Save an Email",
-                RestoreDirectory = true,
-                InitialDirectory = dir
-            };
-            saveFileDialog1.ShowDialog();
-
-            // If the file name is not an empty string open it for saving.
-            if (saveFileDialog1.FileName != "")
-                item.SaveAs(saveFileDialog1.FileName, Outlook.OlSaveAsType.olMSG);
-
-        }
-
-        // Return file path used for initial filepath for SaveFileDialog
-        private String GetProjectDirectory()
-        {
-            String dir = "G:\\";
-            String prj = this.textBoxProject.Text;
-
-            if (this.radioButtonPrj.Checked && !prj.Equals("")){
-                try {
-                    String path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
-                    if (Directory.EnumerateDirectories(path, prj + "*").Any()) {
-                        String[] s = Directory.GetDirectories(path, prj + "*");
-                        dir = s[0];
-                    }
-                } catch(Exception e) {
-                    MessageBox.Show("Invalid directory. Check if the Project # is correct.");
-                    Console.Write(e);
-                }
-            } else if (this.radioButtonAR.Checked) {
-                //TODO
-                dir += "At Risk\\";
-            } else if (this.radioButtonOH.Checked){
-                //TODO
-                dir += "OverHead Projects (OHPs)\\";
-            }
-
-            return dir;
         }
 
         private Outlook.MailItem GetMailItem()
@@ -102,5 +52,114 @@ namespace OEFCemail
             }
             return null;
         }
+
+        // only allow inputting project numbers for file lookup
+        private void RadioButtonPrj_CheckedChanged(object sender, EventArgs e)
+        {
+            ProjectTextBoxActive = !ProjectTextBoxActive;
+            if (ProjectTextBoxActive) {
+                this.textBoxProject.BackColor = System.Drawing.Color.White;
+                this.textBoxProject.ReadOnly = false;
+            } else {
+                this.textBoxProject.BackColor = System.Drawing.Color.Gray;
+                this.textBoxProject.ReadOnly = true;
+            }
+                
+        }
+
+        private void ButtonSaveEmail_Click(object sender, EventArgs e)
+        {
+            Outlook.MailItem item = GetMailItem();
+            //TODO parse OEFC specific emails
+            String dir = GetProjectDirectory();
+
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Outlook Message File|*.msg",
+                Title = "Save an Email",
+                RestoreDirectory = true,
+                InitialDirectory = dir
+            };
+            saveFileDialog.ShowDialog();
+
+            // If the file name is not an empty string open it for saving.
+            if (saveFileDialog.FileName != "")
+                item.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
+
+        }
+
+        private void ButtonAppend_Click(object sender, EventArgs e)
+        {
+            String dir = GetProjectDirectory();
+
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Word Documents|*.docx",
+                Title = "Open a Word Doc File",
+                RestoreDirectory = true,
+                InitialDirectory = dir
+            };
+            openFileDialog.ShowDialog();
+
+            if (openFileDialog.FileName != "")
+            {
+                // https://www.codeproject.com/Questions/1104176/Append-text-to-existing-word-document-from-another
+                //TODO formatting (include sender/receiver/content/attachments/date)
+                //TODO progress bar?
+                //TODO only save to Project Notes?
+                //TODO parsing content for less editing?
+                //TODO parsing sender/receiver?
+                Word._Application oWord = new Word.Application();
+                oWord.Documents.Open(openFileDialog.FileName);
+                oWord.Selection.TypeText(this.textBoxContent.Text);
+                oWord.ActiveDocument.Save();
+                oWord.Quit();
+            }
+        }
+
+        // Return file path used for initial filepath for SaveFileDialog
+        private String GetProjectDirectory()
+        {
+            String dir = "G:\\";
+            String prj = this.textBoxProject.Text;
+
+            if (this.radioButtonPrj.Checked && !prj.Equals("") && prj.Length > 1)
+            {
+                String path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
+                String s = SearchDirectories(path, prj);
+                if (!s.Equals(""))
+                    dir = s;
+            }
+            else if (this.radioButtonAR.Checked)
+            {
+                dir += "At Risk\\";
+            }
+            else if (this.radioButtonOH.Checked)
+            {
+                dir += "OverHead Projects (OHPs)\\";
+            }
+
+            return dir;
+        }
+
+        private String SearchDirectories(String path, String prj)
+        {
+            try
+            {
+
+                if (Directory.EnumerateDirectories(path, prj + "*").Any())
+                {
+                    String[] s = Directory.GetDirectories(path, prj + "*");
+                    return s[0];
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Invalid directory. Check if the Project # is correct.");
+                Console.Write(e);
+            }
+            return "";
+        }
+ 
     }
 }

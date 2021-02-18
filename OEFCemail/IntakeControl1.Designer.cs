@@ -30,6 +30,10 @@ namespace OEFCemail
         private void InitializeComponent()
         {
             this.panel1 = new System.Windows.Forms.Panel();
+            this.groupBoxRadioBtn = new System.Windows.Forms.GroupBox();
+            this.radioButtonOH = new System.Windows.Forms.RadioButton();
+            this.radioButtonAR = new System.Windows.Forms.RadioButton();
+            this.radioButtonPrj = new System.Windows.Forms.RadioButton();
             this.label6 = new System.Windows.Forms.Label();
             this.textBoxProject = new System.Windows.Forms.TextBox();
             this.buttonAppend = new System.Windows.Forms.Button();
@@ -45,10 +49,6 @@ namespace OEFCemail
             this.label1 = new System.Windows.Forms.Label();
             this.textBoxSender = new System.Windows.Forms.TextBox();
             this.textBoxReceiver = new System.Windows.Forms.TextBox();
-            this.groupBoxRadioBtn = new System.Windows.Forms.GroupBox();
-            this.radioButtonOH = new System.Windows.Forms.RadioButton();
-            this.radioButtonAR = new System.Windows.Forms.RadioButton();
-            this.radioButtonPrj = new System.Windows.Forms.RadioButton();
             this.panel1.SuspendLayout();
             this.groupBoxRadioBtn.SuspendLayout();
             this.SuspendLayout();
@@ -80,6 +80,52 @@ namespace OEFCemail
             this.panel1.TabIndex = 0;
             this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.Panel1_Paint);
             // 
+            // groupBoxRadioBtn
+            // 
+            this.groupBoxRadioBtn.Controls.Add(this.radioButtonOH);
+            this.groupBoxRadioBtn.Controls.Add(this.radioButtonAR);
+            this.groupBoxRadioBtn.Controls.Add(this.radioButtonPrj);
+            this.groupBoxRadioBtn.Location = new System.Drawing.Point(21, 482);
+            this.groupBoxRadioBtn.Name = "groupBoxRadioBtn";
+            this.groupBoxRadioBtn.Size = new System.Drawing.Size(120, 82);
+            this.groupBoxRadioBtn.TabIndex = 24;
+            this.groupBoxRadioBtn.TabStop = false;
+            // 
+            // radioButtonOH
+            // 
+            this.radioButtonOH.AutoSize = true;
+            this.radioButtonOH.Location = new System.Drawing.Point(6, 56);
+            this.radioButtonOH.Name = "radioButtonOH";
+            this.radioButtonOH.Size = new System.Drawing.Size(72, 17);
+            this.radioButtonOH.TabIndex = 26;
+            this.radioButtonOH.TabStop = true;
+            this.radioButtonOH.Text = "Overhead";
+            this.radioButtonOH.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonAR
+            // 
+            this.radioButtonAR.AutoSize = true;
+            this.radioButtonAR.Location = new System.Drawing.Point(6, 33);
+            this.radioButtonAR.Name = "radioButtonAR";
+            this.radioButtonAR.Size = new System.Drawing.Size(59, 17);
+            this.radioButtonAR.TabIndex = 25;
+            this.radioButtonAR.TabStop = true;
+            this.radioButtonAR.Text = "At Risk";
+            this.radioButtonAR.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonPrj
+            // 
+            this.radioButtonPrj.AutoSize = true;
+            this.radioButtonPrj.Checked = true;
+            this.radioButtonPrj.Location = new System.Drawing.Point(6, 10);
+            this.radioButtonPrj.Name = "radioButtonPrj";
+            this.radioButtonPrj.Size = new System.Drawing.Size(63, 17);
+            this.radioButtonPrj.TabIndex = 24;
+            this.radioButtonPrj.TabStop = true;
+            this.radioButtonPrj.Text = "Projects";
+            this.radioButtonPrj.UseVisualStyleBackColor = true;
+            this.radioButtonPrj.CheckedChanged += new System.EventHandler(this.RadioButtonPrj_CheckedChanged);
+            // 
             // label6
             // 
             this.label6.AutoSize = true;
@@ -104,6 +150,7 @@ namespace OEFCemail
             this.buttonAppend.TabIndex = 17;
             this.buttonAppend.Text = "Save to Notes";
             this.buttonAppend.UseVisualStyleBackColor = true;
+            this.buttonAppend.Click += new System.EventHandler(this.ButtonAppend_Click);
             // 
             // buttonSaveEmail
             // 
@@ -222,51 +269,6 @@ namespace OEFCemail
             this.textBoxReceiver.Name = "textBoxReceiver";
             this.textBoxReceiver.Size = new System.Drawing.Size(294, 39);
             this.textBoxReceiver.TabIndex = 1;
-            // 
-            // groupBoxRadioBtn
-            // 
-            this.groupBoxRadioBtn.Controls.Add(this.radioButtonOH);
-            this.groupBoxRadioBtn.Controls.Add(this.radioButtonAR);
-            this.groupBoxRadioBtn.Controls.Add(this.radioButtonPrj);
-            this.groupBoxRadioBtn.Location = new System.Drawing.Point(21, 482);
-            this.groupBoxRadioBtn.Name = "groupBoxRadioBtn";
-            this.groupBoxRadioBtn.Size = new System.Drawing.Size(120, 82);
-            this.groupBoxRadioBtn.TabIndex = 24;
-            this.groupBoxRadioBtn.TabStop = false;
-            // 
-            // radioButtonOH
-            // 
-            this.radioButtonOH.AutoSize = true;
-            this.radioButtonOH.Location = new System.Drawing.Point(6, 56);
-            this.radioButtonOH.Name = "radioButtonOH";
-            this.radioButtonOH.Size = new System.Drawing.Size(72, 17);
-            this.radioButtonOH.TabIndex = 26;
-            this.radioButtonOH.TabStop = true;
-            this.radioButtonOH.Text = "Overhead";
-            this.radioButtonOH.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonAR
-            // 
-            this.radioButtonAR.AutoSize = true;
-            this.radioButtonAR.Location = new System.Drawing.Point(6, 33);
-            this.radioButtonAR.Name = "radioButtonAR";
-            this.radioButtonAR.Size = new System.Drawing.Size(59, 17);
-            this.radioButtonAR.TabIndex = 25;
-            this.radioButtonAR.TabStop = true;
-            this.radioButtonAR.Text = "At Risk";
-            this.radioButtonAR.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonPrj
-            // 
-            this.radioButtonPrj.AutoSize = true;
-            this.radioButtonPrj.Checked = true;
-            this.radioButtonPrj.Location = new System.Drawing.Point(6, 10);
-            this.radioButtonPrj.Name = "radioButtonPrj";
-            this.radioButtonPrj.Size = new System.Drawing.Size(63, 17);
-            this.radioButtonPrj.TabIndex = 24;
-            this.radioButtonPrj.TabStop = true;
-            this.radioButtonPrj.Text = "Projects";
-            this.radioButtonPrj.UseVisualStyleBackColor = true;
             // 
             // IntakeControl1
             // 
