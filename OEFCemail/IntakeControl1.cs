@@ -4,14 +4,19 @@ using System.Linq;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using Word = Microsoft.Office.Interop.Word;
+using Microsoft.Office.Tools.Outlook;
 
 namespace OEFCemail
 {
     public partial class IntakeControl1 : UserControl
     {
+        // property identifier, used for attachment property checking
+        // See 1.3.4.1 and 2.587 here: https://interoperability.blob.core.windows.net/files/MS-OXPROPS/%5bMS-OXPROPS%5d.pdf
+        const string PR_ATTACH_CONTENT_ID = "http://schemas.microsoft.com/mapi/proptag/0x3712001F";
+        const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
 
         private bool ProjectTextBoxActive = true;
-
+        
         public IntakeControl1()
         {
             InitializeComponent();
@@ -19,23 +24,6 @@ namespace OEFCemail
 
         private void Panel1_Paint(object sender, PaintEventArgs e)
         {
-
-        }
-
-        private void ButtonAutoFill_Click(object sender, EventArgs e)
-        {
-            Outlook.MailItem item = GetMailItem();
-            if (item != null)
-            {
-                //TODO: parsing sender/receiver?
-                //TODO: parse content for better formatting?
-                this.textBoxSender.Text = item.SenderName.ToString();
-                this.textBoxReceiver.Text = item.ReceivedByName;
-                this.textBoxTime.Text = item.ReceivedTime.ToString();
-                this.textBoxContent.Text = item.Body.ToString();
-                //TODO: parse attachment names (first check if attachments, then parse through list)
-                //this.textBoxAttach.Text =
-            }
 
         }
 
@@ -48,9 +36,80 @@ namespace OEFCemail
             {
                 Object obj = explorer.Selection[1];
                 if (obj is Outlook.MailItem)
-                    return (obj as Outlook.MailItem);    
+                    return (obj as Outlook.MailItem);
             }
             return null;
+        }
+
+        private void ButtonAutoFill_Click(object sender, EventArgs e)
+        {
+            Outlook.MailItem item = GetMailItem();
+            if (item != null)
+            {
+                //TODO: parse content for better formatting?
+                this.textBoxSender.Text = item.SenderName.ToString();
+                this.textBoxTime.Text = item.ReceivedTime.ToString();
+                this.textBoxContent.Text = item.Body.ToString();
+
+                // in the case the attachments/recipients have values in this, empty them
+                this.textBoxReceiver.Text = "";
+                this.textBoxAttach.Text = "";
+
+                FillRecipientsTextBox(item);
+                FillAttachmentsTextBox(item);
+            }
+
+        }
+
+        private void FillRecipientsTextBox(Outlook.MailItem item)
+        {
+            Outlook.Recipients recip = item.Recipients; //includes CCs
+            for (int i = 1; i <= recip.Count; i++)
+            {
+                Outlook.Recipient r = recip[i];
+                //TODO: fix sizing for text boxes
+                this.textBoxReceiver.Text += r.Name;
+
+                // https://docs.microsoft.com/en-us/office/client-developer/outlook/pia/how-to-get-the-e-mail-address-of-a-recipient
+                string smtpAddress = r.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS).ToString();
+                this.textBoxReceiver.Text += " (" + smtpAddress + ")";
+                if (i < recip.Count)
+                    this.textBoxReceiver.Text += "; ";
+            }
+        }
+
+        private void FillAttachmentsTextBox(Outlook.MailItem item)
+        {
+            //TODO: fix attachment parsing
+            Outlook.Attachments attach = item.Attachments;
+            for (int i = 1; i <= attach.Count; i++)
+            {
+                Outlook.Attachment att = attach[i];
+                if (!IsEmbedded(att))
+                {
+                    this.textBoxAttach.Text += att.FileName;
+                    if (i < attach.Count)
+                        this.textBoxAttach.Text += ", ";
+                }
+
+            }
+        }
+
+        // https://stackoverflow.com/questions/59075501/find-out-if-an-attachment-is-embedded-or-attached
+        // check if attachment is embedded. Returns true if it is
+        private bool IsEmbedded(Outlook.Attachment att) {
+            string s = "";
+            try {
+                s = (string)att.PropertyAccessor.GetProperty(PR_ATTACH_CONTENT_ID);
+            } catch(Exception e) {
+                MessageBox.Show("Error getting attachment property PR_ATTACH_CONTENT_ID.");
+                Console.Write(e);
+            }
+            
+            if (s == "")
+                return false;
+
+            return true;
         }
 
         // only allow inputting project numbers for file lookup
@@ -83,6 +142,7 @@ namespace OEFCemail
             saveFileDialog.ShowDialog();
 
             // If the file name is not an empty string open it for saving.
+            //TODO parse mailitem body to trim email down as needed
             if (saveFileDialog.FileName != "")
                 item.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
 
