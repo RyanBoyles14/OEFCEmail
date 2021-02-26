@@ -55,6 +55,8 @@ namespace OEFCemail
             // 
             // panel1
             // 
+            this.panel1.AutoScroll = true;
+            this.panel1.AutoSize = true;
             this.panel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.panel1.BackColor = System.Drawing.SystemColors.Control;
             this.panel1.Controls.Add(this.groupBoxRadioBtn);
@@ -73,10 +75,10 @@ namespace OEFCemail
             this.panel1.Controls.Add(this.label1);
             this.panel1.Controls.Add(this.textBoxSender);
             this.panel1.Controls.Add(this.textBoxReceiver);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(400, 700);
+            this.panel1.Size = new System.Drawing.Size(383, 778);
             this.panel1.TabIndex = 0;
             this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.Panel1_Paint);
             // 
@@ -85,9 +87,9 @@ namespace OEFCemail
             this.groupBoxRadioBtn.Controls.Add(this.radioButtonOH);
             this.groupBoxRadioBtn.Controls.Add(this.radioButtonAR);
             this.groupBoxRadioBtn.Controls.Add(this.radioButtonPrj);
-            this.groupBoxRadioBtn.Location = new System.Drawing.Point(21, 482);
+            this.groupBoxRadioBtn.Location = new System.Drawing.Point(23, 562);
             this.groupBoxRadioBtn.Name = "groupBoxRadioBtn";
-            this.groupBoxRadioBtn.Size = new System.Drawing.Size(120, 82);
+            this.groupBoxRadioBtn.Size = new System.Drawing.Size(125, 80);
             this.groupBoxRadioBtn.TabIndex = 24;
             this.groupBoxRadioBtn.TabStop = false;
             // 
@@ -129,7 +131,7 @@ namespace OEFCemail
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(18, 574);
+            this.label6.Location = new System.Drawing.Point(20, 654);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(50, 13);
             this.label6.TabIndex = 20;
@@ -137,16 +139,16 @@ namespace OEFCemail
             // 
             // textBoxProject
             // 
-            this.textBoxProject.Location = new System.Drawing.Point(21, 590);
+            this.textBoxProject.Location = new System.Drawing.Point(23, 670);
             this.textBoxProject.Name = "textBoxProject";
-            this.textBoxProject.Size = new System.Drawing.Size(120, 20);
+            this.textBoxProject.Size = new System.Drawing.Size(125, 20);
             this.textBoxProject.TabIndex = 19;
             // 
             // buttonAppend
             // 
-            this.buttonAppend.Location = new System.Drawing.Point(21, 670);
+            this.buttonAppend.Location = new System.Drawing.Point(23, 750);
             this.buttonAppend.Name = "buttonAppend";
-            this.buttonAppend.Size = new System.Drawing.Size(117, 23);
+            this.buttonAppend.Size = new System.Drawing.Size(125, 25);
             this.buttonAppend.TabIndex = 17;
             this.buttonAppend.Text = "Save to Notes";
             this.buttonAppend.UseVisualStyleBackColor = true;
@@ -154,9 +156,9 @@ namespace OEFCemail
             // 
             // buttonSaveEmail
             // 
-            this.buttonSaveEmail.Location = new System.Drawing.Point(21, 628);
+            this.buttonSaveEmail.Location = new System.Drawing.Point(23, 708);
             this.buttonSaveEmail.Name = "buttonSaveEmail";
-            this.buttonSaveEmail.Size = new System.Drawing.Size(117, 23);
+            this.buttonSaveEmail.Size = new System.Drawing.Size(125, 25);
             this.buttonSaveEmail.TabIndex = 15;
             this.buttonSaveEmail.Text = "Save Email To File";
             this.buttonSaveEmail.UseVisualStyleBackColor = true;
@@ -164,9 +166,9 @@ namespace OEFCemail
             // 
             // buttonAutoFill
             // 
-            this.buttonAutoFill.Location = new System.Drawing.Point(20, 453);
+            this.buttonAutoFill.Location = new System.Drawing.Point(22, 533);
             this.buttonAutoFill.Name = "buttonAutoFill";
-            this.buttonAutoFill.Size = new System.Drawing.Size(121, 23);
+            this.buttonAutoFill.Size = new System.Drawing.Size(125, 25);
             this.buttonAutoFill.TabIndex = 14;
             this.buttonAutoFill.Text = "AutoFill";
             this.buttonAutoFill.UseVisualStyleBackColor = true;
@@ -175,7 +177,7 @@ namespace OEFCemail
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(18, 382);
+            this.label5.Location = new System.Drawing.Point(21, 423);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(66, 13);
             this.label5.TabIndex = 13;
@@ -184,7 +186,7 @@ namespace OEFCemail
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(18, 154);
+            this.label4.Location = new System.Drawing.Point(21, 195);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(44, 13);
             this.label4.TabIndex = 12;
@@ -194,10 +196,11 @@ namespace OEFCemail
             // 
             this.textBoxAttach.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxAttach.Location = new System.Drawing.Point(20, 402);
+            this.textBoxAttach.Location = new System.Drawing.Point(23, 443);
             this.textBoxAttach.Multiline = true;
             this.textBoxAttach.Name = "textBoxAttach";
-            this.textBoxAttach.Size = new System.Drawing.Size(359, 34);
+            this.textBoxAttach.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBoxAttach.Size = new System.Drawing.Size(340, 71);
             this.textBoxAttach.TabIndex = 11;
             // 
             // textBoxContent
@@ -206,11 +209,11 @@ namespace OEFCemail
             this.textBoxContent.AcceptsTab = true;
             this.textBoxContent.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxContent.Location = new System.Drawing.Point(20, 174);
+            this.textBoxContent.Location = new System.Drawing.Point(23, 215);
             this.textBoxContent.Multiline = true;
             this.textBoxContent.Name = "textBoxContent";
             this.textBoxContent.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBoxContent.Size = new System.Drawing.Size(359, 199);
+            this.textBoxContent.Size = new System.Drawing.Size(340, 199);
             this.textBoxContent.TabIndex = 10;
             // 
             // textBoxTime
@@ -218,15 +221,15 @@ namespace OEFCemail
             this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
-            this.textBoxTime.Location = new System.Drawing.Point(85, 121);
+            this.textBoxTime.Location = new System.Drawing.Point(88, 162);
             this.textBoxTime.Name = "textBoxTime";
-            this.textBoxTime.Size = new System.Drawing.Size(294, 20);
+            this.textBoxTime.Size = new System.Drawing.Size(275, 20);
             this.textBoxTime.TabIndex = 7;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(49, 124);
+            this.label3.Location = new System.Drawing.Point(52, 165);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(30, 13);
             this.label3.TabIndex = 6;
@@ -235,7 +238,7 @@ namespace OEFCemail
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(29, 70);
+            this.label2.Location = new System.Drawing.Point(32, 86);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(50, 13);
             this.label2.TabIndex = 4;
@@ -244,7 +247,7 @@ namespace OEFCemail
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(38, 16);
+            this.label1.Location = new System.Drawing.Point(41, 32);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(41, 13);
             this.label1.TabIndex = 3;
@@ -254,20 +257,21 @@ namespace OEFCemail
             // 
             this.textBoxSender.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxSender.Location = new System.Drawing.Point(85, 13);
+            this.textBoxSender.Location = new System.Drawing.Point(88, 29);
             this.textBoxSender.Multiline = true;
             this.textBoxSender.Name = "textBoxSender";
-            this.textBoxSender.Size = new System.Drawing.Size(294, 39);
+            this.textBoxSender.Size = new System.Drawing.Size(275, 30);
             this.textBoxSender.TabIndex = 2;
             // 
             // textBoxReceiver
             // 
             this.textBoxReceiver.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxReceiver.Location = new System.Drawing.Point(85, 67);
+            this.textBoxReceiver.Location = new System.Drawing.Point(88, 83);
             this.textBoxReceiver.Multiline = true;
             this.textBoxReceiver.Name = "textBoxReceiver";
-            this.textBoxReceiver.Size = new System.Drawing.Size(294, 39);
+            this.textBoxReceiver.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBoxReceiver.Size = new System.Drawing.Size(275, 65);
             this.textBoxReceiver.TabIndex = 1;
             // 
             // IntakeControl1
@@ -278,12 +282,13 @@ namespace OEFCemail
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.Controls.Add(this.panel1);
             this.Name = "IntakeControl1";
-            this.Size = new System.Drawing.Size(400, 700);
+            this.Size = new System.Drawing.Size(383, 700);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             this.groupBoxRadioBtn.ResumeLayout(false);
             this.groupBoxRadioBtn.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 

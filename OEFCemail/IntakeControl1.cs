@@ -10,12 +10,14 @@ namespace OEFCemail
 {
     public partial class IntakeControl1 : UserControl
     {
-        // property identifier, used for attachment property checking
-        // See 1.3.4.1 and 2.587 here: https://interoperability.blob.core.windows.net/files/MS-OXPROPS/%5bMS-OXPROPS%5d.pdf
-        const string PR_ATTACH_CONTENT_ID = "http://schemas.microsoft.com/mapi/proptag/0x3712001F";
-        const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
+        // property identifiers, used for attachment property checking
+        // Reference for all identifies: https://interoperability.blob.core.windows.net/files/MS-OXPROPS/%5bMS-OXPROPS%5d.pdf
+        // See 1.3.4.1 for how to use
+        const string PR_ATTACH_CONTENT_ID = "http://schemas.microsoft.com/mapi/proptag/0x3712001F";// See 2.587
+        const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001F";// See 2.1020
+        const string SenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
 
-        private bool ProjectTextBoxActive = true;
+        private bool ProjectTextBoxActive = true; // for styling the project type radio buttons
         
         public IntakeControl1()
         {
@@ -48,6 +50,9 @@ namespace OEFCemail
             {
                 //TODO: parse content for better formatting?
                 this.textBoxSender.Text = item.SenderName.ToString();
+                // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
+                string senderAddress = item.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
+                this.textBoxSender.Text += " (" + senderAddress + ")";
                 this.textBoxTime.Text = item.ReceivedTime.ToString();
                 this.textBoxContent.Text = item.Body.ToString();
 
@@ -71,6 +76,7 @@ namespace OEFCemail
                 this.textBoxReceiver.Text += r.Name;
 
                 // https://docs.microsoft.com/en-us/office/client-developer/outlook/pia/how-to-get-the-e-mail-address-of-a-recipient
+                // alternative to r.Address, more reliable to getting in-office email addresses.
                 string smtpAddress = r.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS).ToString();
                 this.textBoxReceiver.Text += " (" + smtpAddress + ")";
                 if (i < recip.Count)

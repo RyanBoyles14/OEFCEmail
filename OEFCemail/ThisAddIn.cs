@@ -9,8 +9,6 @@ using Office = Microsoft.Office.Core;
 namespace OEFCemail
 {
 
-
-
     public partial class ThisAddIn
     {
 
