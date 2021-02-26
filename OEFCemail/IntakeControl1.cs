@@ -13,7 +13,7 @@ namespace OEFCemail
         // property identifiers, used for attachment property checking
         // Reference for all identifies: https://interoperability.blob.core.windows.net/files/MS-OXPROPS/%5bMS-OXPROPS%5d.pdf
         // See 1.3.4.1 for how to use
-        const string PR_ATTACH_CONTENT_ID = "http://schemas.microsoft.com/mapi/proptag/0x3712001F";// See 2.587
+        const string PR_ATTACH_FLAGS = "http://schemas.microsoft.com/mapi/proptag/0x37140003";// See 2.594
         const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001F";// See 2.1020
         const string SenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
 
@@ -92,29 +92,23 @@ namespace OEFCemail
             {
                 Outlook.Attachment att = attach[i];
                 if (!IsEmbedded(att))
-                {
-                    this.textBoxAttach.Text += att.FileName;
-                    if (i < attach.Count)
-                        this.textBoxAttach.Text += ", ";
-                }
-
+                    this.textBoxAttach.Text += att.FileName + ", ";
             }
         }
 
-        // https://stackoverflow.com/questions/59075501/find-out-if-an-attachment-is-embedded-or-attached
+        // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
+        // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
         // check if attachment is embedded. Returns true if it is
         private bool IsEmbedded(Outlook.Attachment att) {
-            string s = "";
-            try {
-                s = (string)att.PropertyAccessor.GetProperty(PR_ATTACH_CONTENT_ID);
-            } catch(Exception e) {
-                MessageBox.Show("Error getting attachment property PR_ATTACH_CONTENT_ID.");
-                Console.Write(e);
-            }
-            
-            if (s == "")
+            Outlook.PropertyAccessor pa = att.PropertyAccessor;
+            int flag = pa.GetProperty(PR_ATTACH_FLAGS);
+
+            // flag of 4 -> the attachment is embedded in the message object's HTML body
+            // Type = 6 -> Rich Text Format. This ensures not saving embedded images, while still saving attachments.
+            if (flag != 4 && (int)att.Type != 6)
                 return false;
 
+            
             return true;
         }
 
