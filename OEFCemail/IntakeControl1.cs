@@ -51,7 +51,6 @@ namespace OEFCemail
             if (item != null)
             {
                 this.textBoxSubject.Text = item.Subject;
-                //TODO: parse content for better formatting?
                 this.textBoxSender.Text = item.SenderName.ToString();
                 // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
                 string senderAddress = item.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
@@ -88,7 +87,6 @@ namespace OEFCemail
 
         private void FillAttachmentsTextBox(Outlook.MailItem item)
         {
-            //TODO: fix attachment parsing
             Outlook.Attachments attach = item.Attachments;
             for (int i = 1; i <= attach.Count; i++)
             {
@@ -134,8 +132,7 @@ namespace OEFCemail
         private void ButtonSaveEmail_Click(object sender, EventArgs e)
         {
             Outlook.MailItem item = GetMailItem();
-            //TODO parse OEFC specific emails
-            String dir = GetProjectDirectory();
+            string dir = GetProjectDirectory();
 
             SaveFileDialog saveFileDialog = new SaveFileDialog
             {
@@ -238,16 +235,28 @@ namespace OEFCemail
             //TODO parsing contents of project notes to figure out where to insert contents
             //TODO append formatted content at correct spot
             //TODO open and parse project notes
-            //TODO fix saving/read-only
+            //TODO separate messages from threads
+            //TODO find cut-off for threads
+            //TODO trim subject as needed
+            //TODO trim down excessive whitespace
+            //TODO ensure embedded images and links get included in project notes
             Word._Application oWord = new Word.Application();
             try {
                 Word._Document oDoc = oWord.Documents.Open(filename);
                 if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
                 {
-                    Word.Table table = oDoc.Tables[1];
-                    //table.Rows.Add(table.Rows[1]);
-                    //oWord.Selection.TypeText(this.textBoxContent.Text);
-                    oWord.ActiveDocument.Save();
+                    Word.Tables tables = oDoc.Tables;
+                    foreach(Word.Table table in tables) { //in the case there are multiple tables
+                        table.Cell(1, 1).Range.Text = 
+                            content[0] + "\n" + //subject
+                            content[3] + "\n" + //time
+                            content[4] + "\n" + //contents
+                            "(Attachment:" + content[5]; //attachments
+
+                        table.Cell(1, 2).Range.Text = content[1] + " to " + content[2]; //sender to receiver
+                        //oWord.Selection.TypeText(this.textBoxContent.Text);
+                        oWord.ActiveDocument.Save();
+                    }
                 }
             } catch (Exception e) { 
                 if(e is IOException) 
@@ -263,13 +272,13 @@ namespace OEFCemail
         // Return file path used for initial filepath for SaveFileDialog
         private String GetProjectDirectory()
         {
-            String dir = "G:\\";
-            String prj = this.textBoxProject.Text;
+            string dir = "G:\\";
+            string prj = this.textBoxProject.Text;
 
             if (this.radioButtonPrj.Checked && !prj.Equals("") && prj.Length > 1)
             {
-                String path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
-                String s = SearchDirectories(path, prj);
+                string path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
+                string s = SearchDirectories(path, prj);
                 if (!s.Equals(""))
                     dir = s;
             }
@@ -285,14 +294,13 @@ namespace OEFCemail
             return dir;
         }
 
-        private String SearchDirectories(String path, String prj)
+        private string SearchDirectories(string path, string prj)
         {
             try
             {
-
                 if (Directory.EnumerateDirectories(path, prj + "*").Any())
                 {
-                    String[] s = Directory.GetDirectories(path, prj + "*");
+                    string[] s = Directory.GetDirectories(path, prj + "*");
                     return s[0];
                 }
             }
