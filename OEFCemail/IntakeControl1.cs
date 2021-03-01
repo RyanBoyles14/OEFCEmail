@@ -29,6 +29,8 @@ namespace OEFCemail
 
         }
 
+        #region Autofill
+
         private Outlook.MailItem GetMailItem()
         {
             // https://codesteps.com/2018/08/06/outlook-2010-add-in-get-mailitem-using-c/
@@ -72,7 +74,6 @@ namespace OEFCemail
             for (int i = 1; i <= recip.Count; i++)
             {
                 Outlook.Recipient r = recip[i];
-                //TODO: fix sizing for text boxes
                 this.textBoxReceiver.Text += r.Name;
 
                 // https://docs.microsoft.com/en-us/office/client-developer/outlook/pia/how-to-get-the-e-mail-address-of-a-recipient
@@ -96,21 +97,24 @@ namespace OEFCemail
             }
         }
 
-        // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
-        // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
         // check if attachment is embedded. Returns true if it is
         private bool IsEmbedded(Outlook.Attachment att) {
             Outlook.PropertyAccessor pa = att.PropertyAccessor;
             int flag = pa.GetProperty(PR_ATTACH_FLAGS);
 
+            // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
+            // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
             // flag of 4 -> the attachment is embedded in the message object's HTML body
             // Type = 6 -> Rich Text Format. This ensures not saving embedded images, while still saving attachments.
             if (flag != 4 && (int)att.Type != 6)
                 return false;
 
-            
             return true;
         }
+
+#endregion
+
+        #region Save Email to File
 
         // only allow inputting project numbers for file lookup
         private void RadioButtonPrj_CheckedChanged(object sender, EventArgs e)
@@ -142,12 +146,13 @@ namespace OEFCemail
             saveFileDialog.ShowDialog();
 
             // If the file name is not an empty string open it for saving.
-            //TODO parse mailitem body to trim email down as needed
             if (saveFileDialog.FileName != "")
                 item.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
 
         }
+#endregion
 
+        #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
             String dir = GetProjectDirectory();
@@ -163,20 +168,40 @@ namespace OEFCemail
 
             if (openFileDialog.FileName != "")
             {
-                // https://www.codeproject.com/Questions/1104176/Append-text-to-existing-word-document-from-another
-                //TODO formatting (include sender/receiver/content/attachments/date)
-                //TODO progress bar?
-                //TODO only save to Project Notes?
-                //TODO parsing content for less editing?
-                //TODO parsing sender/receiver?
-                Word._Application oWord = new Word.Application();
-                oWord.Documents.Open(openFileDialog.FileName);
-                oWord.Selection.TypeText(this.textBoxContent.Text);
-                oWord.ActiveDocument.Save();
-                oWord.Quit();
+                Format(openFileDialog.FileName);
             }
         }
 
+        private void Format(string filename)
+        {
+            //TODO formatting (include sender/receiver/content/attachments/timestamp/subject)
+            //TODO progress bar?
+            //TODO parsing contents (by timestamp + subject for now) to find how much of the email thread needs saved
+            //TODO parsing contents of project notes to figure out where to insert contents
+            //TODO append formatted content at correct spot
+            //TODO open and parse project notes
+            //TODO fix saving/read-only
+            Word._Application oWord = new Word.Application();
+            try {
+                Word._Document oDoc = oWord.Documents.Open(filename);
+                if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
+                {
+                    //Word.Table table = oDoc.Tables[1];
+                    //table.Rows.Add(table.Rows[1]);
+                    //oWord.Selection.TypeText(this.textBoxContent.Text);
+                    oWord.ActiveDocument.Save();
+                }
+            } catch (Exception e) { 
+                if(e is IOException) 
+                    MessageBox.Show("Error Saving to Word Doc. Check that it is not already open");
+                Console.WriteLine(e);
+            }
+
+            oWord.Quit();
+        }
+        #endregion
+
+        #region Get Filepath
         // Return file path used for initial filepath for SaveFileDialog
         private String GetProjectDirectory()
         {
@@ -216,10 +241,10 @@ namespace OEFCemail
             catch (Exception e)
             {
                 MessageBox.Show("Invalid directory. Check if the Project # is correct.");
-                Console.Write(e);
+                Console.WriteLine(e);
             }
             return "";
         }
- 
+        #endregion
     }
 }
