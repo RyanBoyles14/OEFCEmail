@@ -49,6 +49,8 @@ namespace OEFCemail
             this.label1 = new System.Windows.Forms.Label();
             this.textBoxSender = new System.Windows.Forms.TextBox();
             this.textBoxReceiver = new System.Windows.Forms.TextBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.textBoxSubject = new System.Windows.Forms.TextBox();
             this.panel1.SuspendLayout();
             this.groupBoxRadioBtn.SuspendLayout();
             this.SuspendLayout();
@@ -59,6 +61,8 @@ namespace OEFCemail
             this.panel1.AutoSize = true;
             this.panel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.panel1.BackColor = System.Drawing.SystemColors.Control;
+            this.panel1.Controls.Add(this.label7);
+            this.panel1.Controls.Add(this.textBoxSubject);
             this.panel1.Controls.Add(this.groupBoxRadioBtn);
             this.panel1.Controls.Add(this.label6);
             this.panel1.Controls.Add(this.textBoxProject);
@@ -78,7 +82,7 @@ namespace OEFCemail
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(383, 778);
+            this.panel1.Size = new System.Drawing.Size(366, 778);
             this.panel1.TabIndex = 0;
             this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.Panel1_Paint);
             // 
@@ -200,7 +204,7 @@ namespace OEFCemail
             this.textBoxAttach.Multiline = true;
             this.textBoxAttach.Name = "textBoxAttach";
             this.textBoxAttach.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBoxAttach.Size = new System.Drawing.Size(340, 71);
+            this.textBoxAttach.Size = new System.Drawing.Size(323, 71);
             this.textBoxAttach.TabIndex = 11;
             // 
             // textBoxContent
@@ -213,7 +217,7 @@ namespace OEFCemail
             this.textBoxContent.Multiline = true;
             this.textBoxContent.Name = "textBoxContent";
             this.textBoxContent.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBoxContent.Size = new System.Drawing.Size(340, 199);
+            this.textBoxContent.Size = new System.Drawing.Size(323, 199);
             this.textBoxContent.TabIndex = 10;
             // 
             // textBoxTime
@@ -221,15 +225,15 @@ namespace OEFCemail
             this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
-            this.textBoxTime.Location = new System.Drawing.Point(88, 162);
+            this.textBoxTime.Location = new System.Drawing.Point(88, 170);
             this.textBoxTime.Name = "textBoxTime";
-            this.textBoxTime.Size = new System.Drawing.Size(275, 20);
+            this.textBoxTime.Size = new System.Drawing.Size(258, 20);
             this.textBoxTime.TabIndex = 7;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(52, 165);
+            this.label3.Location = new System.Drawing.Point(52, 173);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(30, 13);
             this.label3.TabIndex = 6;
@@ -238,7 +242,7 @@ namespace OEFCemail
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(32, 86);
+            this.label2.Location = new System.Drawing.Point(32, 102);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(50, 13);
             this.label2.TabIndex = 4;
@@ -247,7 +251,7 @@ namespace OEFCemail
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(41, 32);
+            this.label1.Location = new System.Drawing.Point(41, 66);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(41, 13);
             this.label1.TabIndex = 3;
@@ -257,22 +261,42 @@ namespace OEFCemail
             // 
             this.textBoxSender.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxSender.Location = new System.Drawing.Point(88, 29);
+            this.textBoxSender.Location = new System.Drawing.Point(88, 63);
             this.textBoxSender.Multiline = true;
             this.textBoxSender.Name = "textBoxSender";
-            this.textBoxSender.Size = new System.Drawing.Size(275, 30);
+            this.textBoxSender.Size = new System.Drawing.Size(258, 30);
             this.textBoxSender.TabIndex = 2;
             // 
             // textBoxReceiver
             // 
             this.textBoxReceiver.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxReceiver.Location = new System.Drawing.Point(88, 83);
+            this.textBoxReceiver.Location = new System.Drawing.Point(88, 99);
             this.textBoxReceiver.Multiline = true;
             this.textBoxReceiver.Name = "textBoxReceiver";
             this.textBoxReceiver.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBoxReceiver.Size = new System.Drawing.Size(275, 65);
+            this.textBoxReceiver.Size = new System.Drawing.Size(258, 65);
             this.textBoxReceiver.TabIndex = 1;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(41, 16);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(43, 13);
+            this.label7.TabIndex = 26;
+            this.label7.Text = "Subject";
+            // 
+            // textBoxSubject
+            // 
+            this.textBoxSubject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBoxSubject.Location = new System.Drawing.Point(88, 13);
+            this.textBoxSubject.Multiline = true;
+            this.textBoxSubject.Name = "textBoxSubject";
+            this.textBoxSubject.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBoxSubject.Size = new System.Drawing.Size(258, 44);
+            this.textBoxSubject.TabIndex = 25;
             // 
             // IntakeControl1
             // 
@@ -282,7 +306,7 @@ namespace OEFCemail
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.Controls.Add(this.panel1);
             this.Name = "IntakeControl1";
-            this.Size = new System.Drawing.Size(383, 700);
+            this.Size = new System.Drawing.Size(366, 700);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
             this.groupBoxRadioBtn.ResumeLayout(false);
@@ -314,5 +338,7 @@ namespace OEFCemail
         private System.Windows.Forms.RadioButton radioButtonOH;
         private System.Windows.Forms.RadioButton radioButtonAR;
         private System.Windows.Forms.RadioButton radioButtonPrj;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.TextBox textBoxSubject;
     }
 }

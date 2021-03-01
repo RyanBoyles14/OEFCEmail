@@ -50,6 +50,7 @@ namespace OEFCemail
             Outlook.MailItem item = GetMailItem();
             if (item != null)
             {
+                this.textBoxSubject.Text = item.Subject;
                 //TODO: parse content for better formatting?
                 this.textBoxSender.Text = item.SenderName.ToString();
                 // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
@@ -155,24 +156,81 @@ namespace OEFCemail
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
-            String dir = GetProjectDirectory();
-
-            OpenFileDialog openFileDialog = new OpenFileDialog
+            string dir = GetProjectDirectory();
+            string[] content = 
             {
-                Filter = "Word Documents|*.docx",
-                Title = "Open a Word Doc File",
-                RestoreDirectory = true,
-                InitialDirectory = dir
+                this.textBoxSubject.Text,
+                this.textBoxSender.Text,
+                this.textBoxReceiver.Text,
+                this.textBoxTime.Text,
+                this.textBoxContent.Text,
+                this.textBoxAttach.Text
             };
-            openFileDialog.ShowDialog();
 
-            if (openFileDialog.FileName != "")
-            {
-                Format(openFileDialog.FileName);
+            // Only bring up file dialog if required fields aren't empty
+            if (!FieldsEmpty(content)) {
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Filter = "Word Documents|*.docx",
+                    Title = "Open a Word Doc File",
+                    RestoreDirectory = true,
+                    InitialDirectory = dir
+                };
+                openFileDialog.ShowDialog();
+
+                if (openFileDialog.FileName != "")
+                {
+                    SaveToDocument(openFileDialog.FileName, content);
+                }
             }
         }
 
-        private void Format(string filename)
+        // check if required fields are empty. Display the empty fields and return true if any are empty
+        private bool FieldsEmpty(string[] content)
+        {
+            bool empty = false;
+            string emptyFields = "";
+            for (int i = 0; i < content.Length; i++)
+            {
+                if (i == 5)
+                    break;
+                if (content[i].Equals(""))
+                {
+                    //field separator
+                    if (!emptyFields.Equals(""))
+                        emptyFields += ", ";
+                    else
+                        empty = true;
+
+                    switch (i)
+                    {
+                        case 0:
+                            emptyFields += "Subject";
+                            break;
+                        case 1:
+                            emptyFields += "Sender";
+                            break;
+                        case 2:
+                            emptyFields += "Receiver";
+                            break;
+                        case 3:
+                            emptyFields += "Time";
+                            break;
+                        case 4:
+                            emptyFields += "Content";
+                            break;
+                    }
+                }
+            }
+
+            if(empty)
+                MessageBox.Show("The following fields are empty:\n" +
+                    emptyFields);
+
+            return empty;
+        }
+
+        private void SaveToDocument(string filename, string[] content)
         {
             //TODO formatting (include sender/receiver/content/attachments/timestamp/subject)
             //TODO progress bar?
@@ -186,7 +244,7 @@ namespace OEFCemail
                 Word._Document oDoc = oWord.Documents.Open(filename);
                 if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
                 {
-                    //Word.Table table = oDoc.Tables[1];
+                    Word.Table table = oDoc.Tables[1];
                     //table.Rows.Add(table.Rows[1]);
                     //oWord.Selection.TypeText(this.textBoxContent.Text);
                     oWord.ActiveDocument.Save();
