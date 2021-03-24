@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
-using Word = Microsoft.Office.Interop.Word;
-using Microsoft.Office.Tools.Outlook;
 
 namespace OEFCemail
 {
@@ -177,7 +175,8 @@ namespace OEFCemail
 
                 if (openFileDialog.FileName != "")
                 {
-                    SaveToDocument(openFileDialog.FileName, content);
+                    EmailSaver es = new EmailSaver(openFileDialog.FileName, content);
+                    es.Save();
                 }
             }
         }
@@ -225,46 +224,6 @@ namespace OEFCemail
                     emptyFields);
 
             return empty;
-        }
-
-        private void SaveToDocument(string filename, string[] content)
-        {
-            //TODO formatting (include sender/receiver/content/attachments/timestamp/subject)
-            //TODO progress bar?
-            //TODO parsing contents (by timestamp + subject for now) to find how much of the email thread needs saved
-            //TODO parsing contents of project notes to figure out where to insert contents
-            //TODO append formatted content at correct spot
-            //TODO open and parse project notes
-            //TODO separate messages from threads
-            //TODO find cut-off for threads
-            //TODO trim subject as needed
-            //TODO trim down excessive whitespace
-            //TODO ensure embedded images and links get included in project notes
-            Word._Application oWord = new Word.Application();
-            try {
-                Word._Document oDoc = oWord.Documents.Open(filename);
-                if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
-                {
-                    Word.Tables tables = oDoc.Tables;
-                    foreach(Word.Table table in tables) { //in the case there are multiple tables
-                        table.Cell(1, 1).Range.Text = 
-                            content[0] + "\n" + //subject
-                            content[3] + "\n" + //time
-                            content[4] + "\n" + //contents
-                            "(Attachment:" + content[5]; //attachments
-
-                        table.Cell(1, 2).Range.Text = content[1] + " to " + content[2]; //sender to receiver
-                        //oWord.Selection.TypeText(this.textBoxContent.Text);
-                        oWord.ActiveDocument.Save();
-                    }
-                }
-            } catch (Exception e) { 
-                if(e is IOException) 
-                    MessageBox.Show("Error Saving to Word Doc. Check that it is not already open");
-                Console.WriteLine(e);
-            }
-
-            oWord.Quit();
         }
         #endregion
 
