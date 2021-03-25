@@ -109,7 +109,7 @@ namespace OEFCemail
             return true;
         }
 
-#endregion
+        #endregion
 
         #region Save Email to File
 
@@ -146,7 +146,7 @@ namespace OEFCemail
                 item.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
 
         }
-#endregion
+        #endregion
 
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)

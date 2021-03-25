@@ -65,13 +65,12 @@ namespace OEFCemail
             }
 
             */
-            string sub = TrimSubject(subject);
-            string t = TrimTime(time);
-            FindRow(subject, time);
-            oWord.Quit();
-            
+
+            int row = FindRow(TrimSubject(subject), ParseTime(time));
+            oWord.Quit(); 
         }
 
+        #region Trim/Parse
         // Get the base subject header w/o Forward or Reply prefixes
         public string TrimSubject(string sub)
         {
@@ -93,7 +92,7 @@ namespace OEFCemail
         }
        
         // parse the time based on the typical formats from Outlook emails
-        private string TrimTime(string t)
+        private DateTime ParseTime(string t)
         {
             string pattern;
             DateTime parsedDate;
@@ -107,15 +106,60 @@ namespace OEFCemail
             }
 
             parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.None);
-            return parsedDate.ToString("M/d/yy hh:mm tt");
+            return parsedDate;
         }
+        #endregion
 
-        //TODO parsing contents of project notes to figure out where to insert contents/if contents already exist in the notes
-        //TODO open and parse project notes
-        private void FindRow(string sub, string t)
+        #region Find Rows
+        //TODO steamline this? Compare Ranges?
+        private int FindRow(string sub, DateTime t)
         {
+            int row = 0;
+            Word.Table oTbl = oDoc.Tables[1];
+            Word.Range rng = oTbl.Range; // Assuming there is only one table in the project notes
+            object findSub = "[Subject: " + sub + "]"; // Using the new note format "[Subject: X]"
 
+            // If subject is found in the table, then find the row.
+            // Else, we can assume we can put in the last row
+            if (rng.Find.Execute(ref findSub))
+            {
+                oTbl.Columns[1].Select();
+                // Search all rows, from the bottom up (most recent), for any with the current mail subject
+                
+                for (int i = oTbl.Rows.Count; i > 0; i--)
+                {
+                    Word.Range rowRng = oTbl.Rows[i].Range;
+                    rowRng.Find.ClearFormatting();
+
+                    Word.Range subjectRng = rowRng.Sentences[1];
+                    Word.Range timeRng = rowRng.Sentences[2];
+
+                    if (subjectRng.Text.TrimEnd('\n').CompareTo((string)findSub) == 0)
+                    {
+                        int result = CompareDates(timeRng.Text.TrimEnd('\n'), t);
+                        if(result < 0) { //The current row has an earlier timestamp
+                            row = i;
+                            break;
+                        } else if(result == 0) { //Usually means the current notes are already intaken.
+                            row = -1;
+                        }
+                    }
+                    
+                }
+            }
+
+            return row;
         }
+
+        private int CompareDates(string t1, DateTime t2)
+        {
+            string pattern = "[Time: MM-dd-yy h:mmtt]"; // Using the new note format
+            DateTime parsedDate = DateTime.ParseExact(t1, pattern, null, System.Globalization.DateTimeStyles.None);
+
+            return DateTime.Compare(parsedDate, t2);
+        }
+
+        #endregion 
 
         //TODO parsing contents (by timestamp + subject for now) to find how much of the email thread needs saved
         //TODO separate messages from threads
@@ -140,7 +184,7 @@ namespace OEFCemail
         // Insert into Doc.
         private void InsertInDoc()
         {
-
+            //date time .ToString("M/d/yy hh:mmtt")
         }
     }
 }
