@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Word = Microsoft.Office.Interop.Word;
@@ -17,7 +18,7 @@ namespace OEFCemail
         private readonly string sender;
         private readonly string receiver;
         private readonly string time;
-        private readonly string message;
+        private string emailBody;
         private readonly Word._Application oWord;
         private readonly Word._Document oDoc;
         public EmailSaver(string filename, string[] content)
@@ -27,7 +28,7 @@ namespace OEFCemail
             sender = content[1];
             receiver = content[2];
             time = content[3];
-            message = content[4];
+            emailBody = content[4];
 
             oWord = new Word.Application();
 
@@ -65,8 +66,36 @@ namespace OEFCemail
             }
 
             */
+            bool hasMoreMessages = true; 
+            string sub = TrimSubject(subject);
+            DateTime dt = ParseTime(time); // time for the top message
+            while (hasMoreMessages) {
+                // i=0: beginning index of the next message
+                // i=1: length of the email properties to parse through
+                int[] propertyIndices = GetSegmentInfo();
+                if (propertyIndices[0] == -1)
+                    hasMoreMessages = false;
 
-            int row = FindRow(TrimSubject(subject), ParseTime(time));
+                string msg = ParseContents(propertyIndices[0], propertyIndices[1]);
+                MessageBox.Show(msg);
+
+                int row = FindRow(sub, dt);
+                if (row == -1)
+                {
+                    MessageBox.Show("Current message may have already been saved. Suspending the process.");
+                    break;
+                }
+
+                // write to Word Doc
+
+                // prepare for next cycle by getting the next message's properties.
+                if(hasMoreMessages)
+                {
+                    ParseNextMessageProperties(propertyIndices[1]);
+                }
+            }
+            
+
             oWord.Quit(); 
         }
 
@@ -92,11 +121,11 @@ namespace OEFCemail
         }
        
         // parse the time based on the typical formats from Outlook emails
-        private DateTime ParseTime(string t)
+        private DateTime ParseTime(string dt)
         {
             string pattern;
             DateTime parsedDate;
-            if (t.StartsWith("Sent: ")) {
+            if (dt.StartsWith("Sent: ")) {
                 // Format from contents: "Sent: Day, Month xx, 20xx x:xx PM"
                 // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
                 pattern = "Sent: dddd, M d, yyyy h:mm tt";
@@ -105,14 +134,66 @@ namespace OEFCemail
                 pattern = "M/d/yyyy h:mm:ss tt";
             }
 
-            parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.None);
+            parsedDate = DateTime.ParseExact(dt, pattern, null, System.Globalization.DateTimeStyles.None);
             return parsedDate;
+        }
+
+        /*
+         * Using Regex, find other messages down the chain
+         * Using this format to find other messages in a chain
+         * From: X
+         * Sent: X
+         * To: X
+         * Cc: X - this is optional
+         * Subject: X
+         */
+        private int[] GetSegmentInfo()
+        {
+            string rExp = "(From: .{0,}\n)" +
+                "(Sent: .{0,}\n)" +
+                "(To: .{0,}\n)" +
+                "(Cc: .{0,}\n){0,1}" +
+                "(Subject: .{0,}\n)";
+            Match match = Regex.Match(emailBody, rExp);
+
+            int propertyIndex = match.Success ? match.Index : -1;
+
+            int[] propertyIndices = { propertyIndex, match.Length };
+            return propertyIndices;
+        }
+
+        //TODO parse/formatting (include sender/receiver/content/attachments/timestamp/subject)
+        //TODO trim whitespace?
+        private string ParseContents(int segmentIndex, int msgInfoLength)
+        {
+            //TODO separate messages from threads
+            //TODO find cut-off for threads
+            string msg;
+            if (segmentIndex == -1)
+            {
+                // no other messages in the chain, set to what's left of the message
+                msg = emailBody;
+            }
+            else
+            {
+                // separate the latest message from the chain, and remove from messageBody.
+                msg = emailBody.Substring(0, segmentIndex);
+                emailBody = emailBody.Remove(0, segmentIndex);
+            }
+
+            return msg;
+        }
+
+        private string ParseNextMessageProperties(int length)
+        {
+            emailBody = emailBody.Remove(0, length);
+            return "";
         }
         #endregion
 
         #region Find Rows
         //TODO steamline this? Compare Ranges?
-        private int FindRow(string sub, DateTime t)
+        private int FindRow(string sub, DateTime dt)
         {
             int row = 0;
             Word.Table oTbl = oDoc.Tables[1];
@@ -136,7 +217,7 @@ namespace OEFCemail
 
                     if (subjectRng.Text.TrimEnd('\n').CompareTo((string)findSub) == 0)
                     {
-                        int result = CompareDates(timeRng.Text.TrimEnd('\n'), t);
+                        int result = CompareDates(timeRng.Text.TrimEnd('\n'), dt);
                         if(result < 0) { //The current row has an earlier timestamp
                             row = i;
                             break;
@@ -151,35 +232,15 @@ namespace OEFCemail
             return row;
         }
 
-        private int CompareDates(string t1, DateTime t2)
+        private int CompareDates(string t, DateTime dt)
         {
             string pattern = "[Time: MM-dd-yy h:mmtt]"; // Using the new note format
-            DateTime parsedDate = DateTime.ParseExact(t1, pattern, null, System.Globalization.DateTimeStyles.None);
+            DateTime parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.None);
 
-            return DateTime.Compare(parsedDate, t2);
+            return DateTime.Compare(parsedDate, dt);
         }
 
         #endregion 
-
-        //TODO parsing contents (by timestamp + subject for now) to find how much of the email thread needs saved
-        //TODO separate messages from threads
-        //TODO find cut-off for threads
-        private void ParseSegment()
-        {
-
-        }
-
-        //TODO formatting (include sender/receiver/content/attachments/timestamp/subject)
-        private void ParseContents()
-        {
-        }
-
-        //TODO trim subject as needed
-        //TODO trim down excessive whitespace
-        private string TrimContents()
-        {
-            return "";
-        }
 
         // Insert into Doc.
         private void InsertInDoc()
