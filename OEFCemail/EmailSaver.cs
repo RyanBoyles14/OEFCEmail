@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Word = Microsoft.Office.Interop.Word;
 using Microsoft.Office.Tools.Outlook;
+using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace OEFCemail
 {
@@ -18,80 +19,90 @@ namespace OEFCemail
         private readonly string sender;
         private readonly string receiver;
         private readonly string time;
-        private string emailBody;
         private readonly string attachment;
         private readonly Word._Application oWord;
         private readonly Word._Document oDoc;
-        public EmailSaver(string filename, string[] content)
+        private readonly Word.Document mailInspector;
+
+        public EmailSaver(string filename, string[] content, Outlook.MailItem item)
         {
             this.filename = filename;
             subject = content[0];
             sender = content[1];
             receiver = content[2];
             time = content[3];
-            emailBody = content[4];
-            attachment = content[5];
+            attachment = content[4];
 
             oWord = new Word.Application();
 
             try
             {
                 oDoc = oWord.Documents.Open(filename);
+                mailInspector = item.GetInspector.WordEditor as Word.Document;
+                mailInspector.Unprotect();
             }
             catch (Exception e)
             {
                 if (e is IOException)
                     MessageBox.Show("Error Opening Word Doc. Check that it is not already open");
                 Console.WriteLine(e);
-            }
+            }            
         }
 
         //TODO progress bar?
         public void Save()
         {
             bool success = true;
-            if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
+            if (oDoc != null)
             {
-                bool hasMoreMessages = true;
-                string sub = TrimSubject(subject);
-                string send = sender;
-                string rec = receiver;
-                DateTime dt = ParseTime(time, false); // time for the top message
-                while (hasMoreMessages)
+                if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
                 {
-                    // i=0: beginning index of the next message
-                    // i=1: length of the email properties to parse through
-                    int[] propertyIndices = GetSegmentInfo();
-                    if (propertyIndices[0] == -1)
-                        hasMoreMessages = false;
-
-                    string msg = ParseContents(propertyIndices[0]);;
-
-                    int row = FindRow(sub, dt);
-                    if (row == -1)
+                    bool hasMoreMessages = true;
+                    string sub = TrimSubject(subject);
+                    string send = sender;
+                    string rec = receiver;
+                    DateTime dt = ParseTime(time, false); // time for the top message
+                    while (hasMoreMessages)
                     {
-                        MessageBox.Show("Current message may have already been saved. Suspending the process.");
-                        success = false;
-                        break;
-                    }
+                        // index 0: beginning index of the next message
+                        // index 1: length of the email properties to parse through
+                        int[] propertyIndices = GetSegmentInfo();
+                        if (propertyIndices[0] == -1)
+                            hasMoreMessages = false;
 
-                    // write to Word Doc
-                    InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), msg, row);
+                        ParseContents(propertyIndices[0]); ;
 
-                    // prepare for next cycle by getting the next message's properties.
-                    if (hasMoreMessages)
-                    {
-                        string[] prop = ParseNextMessageProperties(propertyIndices[1]);
-                        send = prop[0];
-                        dt = ParseTime(prop[1], true);
-                        rec = prop[2];
+                        int row = FindRow(sub, dt);
+                        if (row == -1)
+                        {
+                            MessageBox.Show("Current message may have already been saved. Suspending the process.");
+                            success = false;
+                            break;
+                        }
+
+                        // write to Word Doc
+                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row);
+
+                        // prepare for next cycle by getting the next message's properties.
+                        if (hasMoreMessages)
+                        {
+                            string[] prop = ParseNextMessageProperties(propertyIndices[1]);
+                            send = prop[0];
+                            dt = ParseTime(prop[1], true);
+                            rec = prop[2];
+                        }
                     }
+                    if (success)
+                        oDoc.ActiveWindow.Visible = true;
+                    else
+                        oWord.Quit();
                 }
-                if (success)
-                    oDoc.ActiveWindow.Visible = true;
-                else
-                    oWord.Quit();
-            } 
+            }
+            else
+            {
+                oWord.Quit();
+                MessageBox.Show("Word Doc not opened. Suspending Process...");
+            }
         }
 
         #region Trim/Parse
@@ -144,39 +155,47 @@ namespace OEFCemail
          */
         private int[] GetSegmentInfo()
         {
-            string rExp = "(From: .{0,}\n)" +
-                "(Sent: .{0,}\n)" +
-                "(To: .{0,}\n)" +
-                "(Cc: .{0,}\n){0,1}" +
-                "(Subject: .{0,}\n)";
-            Match match = Regex.Match(emailBody, rExp);
+            int startRange = -1;
+            int endRange = -1;
+            string rExp = "(From: .{0,}\v)" +
+                "(Sent: .{0,}\v)" +
+                "(To: .{0,}\v)" +
+                "(Cc: .{0,}\v){0,1}" +
+                "(Subject: .{0,}\r\r)";
+            //TODO Change range indexing
+            Word.Range range = mailInspector.Range();
+            range.Find.Text = rExp;
+            range.Find.ClearFormatting();
+            range.Find.Execute();
 
-            int propertyIndex = match.Success ? match.Index : -1;
+            if (range.Find.Found)
+            {
+                startRange = range.Start;
+                endRange = range.End;
+            }
 
-            int[] propertyIndices = { propertyIndex, match.Length };
+            int[] propertyIndices = { startRange, endRange };
             return propertyIndices;
         }
 
         //TODO make sure to trim as needed.
-        private string ParseContents(int segmentIndex)
+        private void ParseContents(int segmentIndex)
         {
-            string msg;
             if (segmentIndex == -1)
             {
                 // no other messages in the chain, set to what's left of the message
-                msg = emailBody;
+                mailInspector.Content.Copy();
             }
             else
             {
-                // separate the latest message from the chain, and remove from messageBody.
-                msg = emailBody.Substring(0, segmentIndex);
-                emailBody = emailBody.Remove(0, segmentIndex);
+                // copy the latest message from the chain, and remove from the content.
+                //TODO Change range indexing
+                mailInspector.Range(0, segmentIndex).Copy();
+                mailInspector.Range(0, segmentIndex).Delete();
             }
-
-            return msg;
         }
 
-        //TODO: Parse From/To/CC
+        //TODO: Trim From/To/CC
         private string[] ParseNextMessageProperties(int length)
         {
             /*
@@ -187,18 +206,18 @@ namespace OEFCemail
              * Cc: X - this is optional
              * Subject: X
              */
-            // If there are any Cc's, it will split into 6. If not, 5.
-            string[] split = emailBody.Substring(0, length).Split('\n'); 
+
+            Word.Range range = mailInspector.Range(0, length);
+            mailInspector.Range(0, length).Delete();
+
+            string[] split = range.Text.Substring(0, length).Split('\v');
 
             string[] prop = new string[3];
-            char[] trim = { '\n', '\r' };
-            prop[0] = split[0].Remove(0, 6).TrimEnd(trim); // Remove "From: "
-            prop[1] = split[1].Remove(0, 6).TrimEnd(trim); // Remove "Sent: "
-            prop[2] = split[2].Remove(0, 4).TrimEnd(trim); // Remove "To: "
-            if(split.Length == 6)
-                prop[2] += "; " + split[3].Remove(0, 4).Trim(trim); // Remove "Cc: "
-
-            emailBody = emailBody.Remove(0, length);
+            prop[0] = split[0].Remove(0, 6); // Remove "From: "
+            prop[1] = split[1].Remove(0, 6); // Remove "Sent: "
+            prop[2] = split[2].Remove(0, 4); // Remove "To: "
+            if (split.Length == 6)
+                prop[2] += "; " + split[3].Remove(0, 4); // Remove "Cc: "
             return prop;
         }
         #endregion
@@ -272,11 +291,12 @@ namespace OEFCemail
 
         #endregion
 
+        #region Insert in Doc
         //TODO test to append formatted content at correct spot
         //TODO test to ensure embedded images and links get included in project notes
         //TODO test no inserting empty rows
         //TODO see if you can keep styling from Outlook message.
-        private void InsertInDoc(string sub, string send, string rec, string t, string msg, int row)
+        private void InsertInDoc(string sub, string send, string rec, string t, int row)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
@@ -297,13 +317,18 @@ namespace OEFCemail
                 row += 1;
             }
 
-            oTbl.Cell(row, 1).Range.Text =
+            oTbl.Cell(row, 1).Range.Paste();
+            Clipboard.Clear();
+
+            /*
+            oTbl.Cell(row, 1). = 
                 "[Subject: " + sub + "]\n" + //subject
                 t + "\n" + //time
-                msg; //contents
+                oTbl.Cell(row, 1).Range.Text; //contents
 
             if(!attachment.Equals(""))
                 oTbl.Cell(row, 1).Range.Text += "\n(Attachment:" + attachment + ")"; //attachments
+            */
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
@@ -335,5 +360,7 @@ namespace OEFCemail
         {
             oTbl.Rows.Add(ref rowRef);
         }
+
+        #endregion
     }
 }

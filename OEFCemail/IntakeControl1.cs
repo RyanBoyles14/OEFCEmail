@@ -54,7 +54,6 @@ namespace OEFCemail
                 string senderAddress = item.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
                 this.textBoxSender.Text += " (" + senderAddress + ")";
                 this.textBoxTime.Text = item.ReceivedTime.ToString();
-                this.textBoxContent.Text = item.Body.ToString();
 
                 // in the case the attachments/recipients have values in this, empty them
                 this.textBoxReceiver.Text = "";
@@ -151,6 +150,8 @@ namespace OEFCemail
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
+            Outlook.MailItem item = GetMailItem();
+
             string dir = GetProjectDirectory();
             string[] content = 
             {
@@ -158,7 +159,6 @@ namespace OEFCemail
                 this.textBoxSender.Text,
                 this.textBoxReceiver.Text,
                 this.textBoxTime.Text,
-                this.textBoxContent.Text,
                 this.textBoxAttach.Text
             };
 
@@ -175,7 +175,7 @@ namespace OEFCemail
 
                 if (openFileDialog.FileName != "")
                 {
-                    EmailSaver es = new EmailSaver(openFileDialog.FileName, content);
+                    EmailSaver es = new EmailSaver(openFileDialog.FileName, content, item);
                     es.Save();
                 }
             }
@@ -186,10 +186,8 @@ namespace OEFCemail
         {
             bool empty = false;
             string emptyFields = "";
-            for (int i = 0; i < content.Length; i++)
+            for (int i = 0; i < content.Length - 1; i++)
             {
-                if (i == 5)
-                    break;
                 if (content[i].Equals(""))
                 {
                     //field separator
@@ -211,9 +209,6 @@ namespace OEFCemail
                             break;
                         case 3:
                             emptyFields += "Time";
-                            break;
-                        case 4:
-                            emptyFields += "Content";
                             break;
                     }
                 }
