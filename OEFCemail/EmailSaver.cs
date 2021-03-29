@@ -317,19 +317,20 @@ namespace OEFCemail
                 row += 1;
             }
 
-            oTbl.Cell(row, 1).Range.Paste();
+            Word.Range tblRange = oTbl.Cell(row, 1).Range;
+
+            tblRange.Paste();
             Clipboard.Clear();
 
-            /*
-            oTbl.Cell(row, 1). = 
+            tblRange.InsertBefore(
                 "[Subject: " + sub + "]\n" + //subject
-                t + "\n" + //time
-                oTbl.Cell(row, 1).Range.Text; //contents
+                t + "\n"); //time
 
-            if(!attachment.Equals(""))
-                oTbl.Cell(row, 1).Range.Text += "\n(Attachment:" + attachment + ")"; //attachments
-            */
+            if (!attachment.Equals(""))
+                tblRange.InsertAfter("\n(Attachment:" + attachment + ")"); //attachments
 
+            
+            
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
         }
