@@ -175,8 +175,15 @@ namespace OEFCemail
 
                 if (openFileDialog.FileName != "")
                 {
-                    EmailSaver es = new EmailSaver(openFileDialog.FileName, content, item);
-                    es.Save();
+                    EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, content, item);
+                    try
+                    {
+                        emailSaver.Save();
+                    } catch (Exception exc)
+                    {
+                        MessageBox.Show(exc + "\nError Saving to Word Doc. Suspending Process...");
+                        emailSaver.SuspendProcess();
+                    }
                 }
             }
         }

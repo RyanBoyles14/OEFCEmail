@@ -40,18 +40,30 @@ namespace OEFCemail
                 oDoc = oWord.Documents.Open(filename);
                 mailInspector = item.GetInspector.WordEditor as Word.Document;
                 mailInspector.Unprotect();
+                oDoc.ActiveWindow.Visible = true;
             }
-            catch (Exception e)
+            catch (Exception exc)
             {
-                if (e is IOException)
-                    MessageBox.Show("Error Opening Word Doc. Check that it is not already open");
-                Console.WriteLine(e);
+                if (exc is IOException)
+                    MessageBox.Show(exc + "\nError Opening Word Doc. Check that it is not already open");
             }            
+        }
+
+        // Only needed to quit without saving, i.e. errors.
+        public void SuspendProcess()
+        {
+            try {
+                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
+                oWord.Quit(ref saveChanges);
+            } catch(Exception exc)
+            {
+                MessageBox.Show(exc + "\nError closing document.");
+            }
+            
         }
 
         //TODO progress bar?
         //TODO trim down whitespace/signoffs?
-        //TODO test exiting loop
         public void Save()
         {
             bool success = true;
@@ -69,26 +81,30 @@ namespace OEFCemail
                         // index 0: beginning index of the next message
                         // index 1: length of the email properties to parse through
                         int[] propRanges = GetSegmentInfo();
-                        if (propRanges[0] == -1)
-                            hasMoreMessages = false;
+                        int endRange = propRanges[0];
+                        int length = propRanges[1];
 
-                        ExtractMessage(propRanges[0]); ;
+                        if (endRange == -1)
+                        {
+                            hasMoreMessages = false;
+                            endRange = mailInspector.Range().End;
+                        }
 
                         int row = FindRow(sub, dt);
                         if (row == -1)
                         {
-                            MessageBox.Show("Current message may have already been saved. Suspending the process.");
+                            MessageBox.Show("Current message may have already been saved. Suspending process...");
                             success = false;
                             break;
                         }
 
                         // write to Word Doc
-                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row);
+                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, endRange);
 
                         // prepare for next cycle by getting the next message's properties.
                         if (hasMoreMessages)
                         {
-                            string[] prop = ParseNextMessageProperties(propRanges[1]);
+                            string[] prop = ParseNextMessageProperties(length);
                             send = prop[0];
                             dt = ParseTime(prop[1], true);
                             rec = prop[2];
@@ -102,8 +118,8 @@ namespace OEFCemail
             }
             else
             {
-                oWord.Quit();
-                MessageBox.Show("Word Doc not opened. Suspending Process...");
+                MessageBox.Show("Word Doc couldn't open. Suspending Process...");
+                SuspendProcess();
             }
         }
 
@@ -159,12 +175,6 @@ namespace OEFCemail
         {
             int startRange = -1;
             int length = -1;
-
-            //this uses Word's Wildcard matching, which is separate from Regex. It's very limited.
-            //string pattern = "(From: ?*^11)(Sent: ?*^11)(To: ?*^11)(Subject: ?*)^13";
-
-            Word.Paragraphs paragraphs = mailInspector.Paragraphs;
-
             
             string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
                 @"(Sent: [^\n\r\v]+[\n\r\v])" +
@@ -172,9 +182,11 @@ namespace OEFCemail
                 @"(Cc: [^\n\r\v]+[\n\r\v])?" +
                 @"(Subject: [^\n\r\v]*[\n\r\v])";
 
+            Word.Paragraphs paragraphs = mailInspector.Paragraphs;
+
             // The message property info should all be within the same paragraph.
             // Need to search paragraph by paragraph to get the specific Range. The Range.Text index would not work
-            foreach(Word.Paragraph p in paragraphs)
+            foreach (Word.Paragraph p in paragraphs)
             {
                 Match match = Regex.Match(p.Range.Text, rExp);
                 if (match.Success)
@@ -187,21 +199,6 @@ namespace OEFCemail
 
             int[] propertyIndices = { startRange, length };
             return propertyIndices;
-        }
-
-        private void ExtractMessage(int endRange)
-        {
-            if (endRange == -1)
-            {
-                // no other messages in the chain, set to what's left of the message
-                mailInspector.Content.Copy();
-            }
-            else
-            {
-                // copy the latest message from the chain, and remove from the content.
-                mailInspector.Range(0, endRange).Copy();
-                mailInspector.Range(0, endRange).Delete();
-            }
         }
 
         private string[] ParseNextMessageProperties(int endRange)
@@ -232,6 +229,7 @@ namespace OEFCemail
         #endregion
 
         #region Find Rows
+        //TODO test saving to files some of the email thread already saved.
         private int FindRow(string sub, DateTime dt)
         {
             int row = 0;
@@ -302,35 +300,38 @@ namespace OEFCemail
 
         #region Insert in Doc
         //TODO test to append formatted content at correct spot
-        //TODO test ALL messages get included
-        //TODO test to ensure embedded images and links get included in project notes
-        //TODO test no inserting empty rows
-        //TODO see if you can keep styling from Outlook message.
-        private void InsertInDoc(string sub, string send, string rec, string t, int row)
+        //TODO test no inserting empty rows/deleting existing rows (specifically with email threads)
+        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
             bool addToEnd = (row == 0);
             int rowCount = oTbl.Rows.Count;
 
-            if (addToEnd) // row == 0 means the email subject wasn't found in the Project notes
+            if (addToEnd) // the email subject wasn't found in the Project notes
             {
-                row = GetEndRow(oTbl);
+                row = GetLastRow(oTbl, rowCount);
             }
 
-            if (row > rowCount) // add a row to the very end
-                AddRow(oTbl, oTbl.Rows[rowCount]);
-            else if (!addToEnd)
-            {   
+            if (row > rowCount)
+            {
+                // add a row to the very end
+                InsertRow(oTbl);
+            } else if (!addToEnd)
+            {
                 // add a row somewhere in the middle
-                AddRow(oTbl, oTbl.Rows[row]);
-                row += 1;
+                InsertRow(oTbl, oTbl.Rows[row]);// row representing the row that should immediately preceed an inserted row
+                row += 1; // row now is the row that we will insert into
             }
 
             Word.Range tblRange = oTbl.Cell(row, 1).Range;
 
+            mailInspector.Range(0, endRange).Copy();
+
             tblRange.Paste();
             Clipboard.Clear();
+
+            mailInspector.Range(0, endRange).Delete();
 
             tblRange.InsertBefore(
                 "[Subject: " + sub + "]\n" + //subject
@@ -339,39 +340,65 @@ namespace OEFCemail
             if (!attachment.Equals(""))
                 tblRange.InsertAfter("\n(Attachment:" + attachment + ")"); //attachments
 
-            
-            
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
         }
 
         // Find a row at the end of the table to append the contents to
-        private int GetEndRow(Word.Table oTbl)
+        private int GetLastRow(Word.Table oTbl, int rowCount)
         {
-            int rowIndex = oTbl.Rows.Count;
             int row;
 
+            char[] trim = { '\r', '\a', '\n', '\v', ' ' };
             // If the last row has content in it, set the row to the next row after it
-            if (oTbl.Rows[rowIndex].Range.Text.Length > 0)
-                row = rowIndex + 1;
+            if (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length > 0)
+                row = rowCount + 1;
             else
             {
                 // the project note documents often has empty rows. Find the earliest empty row to insert into.
-                while (oTbl.Rows[rowIndex].Range.Text.Length > 0)
+                while (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length == 0)
                 {
-                    rowIndex--;
+                    rowCount--;
                 }
-                row = rowIndex + 1;
+                row = rowCount + 1;
             }
             return row;
         }
 
         // Add a row after the given row reference
-        private void AddRow(Word.Table oTbl, object rowRef)
+        private void InsertRow(Word.Table oTbl, object rowRef)
         {
             oTbl.Rows.Add(ref rowRef);
         }
 
+        private void InsertRow(Word.Table oTbl)
+        {
+            oTbl.Rows.Add();
+        }
         #endregion
+
+        public void wait(int milliseconds)
+        {
+            var timer1 = new System.Windows.Forms.Timer();
+            if (milliseconds == 0 || milliseconds < 0) return;
+
+            // Console.WriteLine("start wait timer");
+            timer1.Interval = milliseconds;
+            timer1.Enabled = true;
+            timer1.Start();
+
+            timer1.Tick += (s, e) =>
+            {
+                timer1.Enabled = false;
+                timer1.Stop();
+                // Console.WriteLine("stop wait timer");
+            };
+
+            while (timer1.Enabled)
+            {
+                Application.DoEvents();
+            }
+        }
     }
+
 }
