@@ -50,6 +50,8 @@ namespace OEFCemail
         }
 
         //TODO progress bar?
+        //TODO trim down whitespace/signoffs?
+        //TODO test exiting loop
         public void Save()
         {
             bool success = true;
@@ -66,11 +68,11 @@ namespace OEFCemail
                     {
                         // index 0: beginning index of the next message
                         // index 1: length of the email properties to parse through
-                        int[] propertyIndices = GetSegmentInfo();
-                        if (propertyIndices[0] == -1)
+                        int[] propRanges = GetSegmentInfo();
+                        if (propRanges[0] == -1)
                             hasMoreMessages = false;
 
-                        ParseContents(propertyIndices[0]); ;
+                        ExtractMessage(propRanges[0]); ;
 
                         int row = FindRow(sub, dt);
                         if (row == -1)
@@ -86,7 +88,7 @@ namespace OEFCemail
                         // prepare for next cycle by getting the next message's properties.
                         if (hasMoreMessages)
                         {
-                            string[] prop = ParseNextMessageProperties(propertyIndices[1]);
+                            string[] prop = ParseNextMessageProperties(propRanges[1]);
                             send = prop[0];
                             dt = ParseTime(prop[1], true);
                             rec = prop[2];
@@ -156,32 +158,40 @@ namespace OEFCemail
         private int[] GetSegmentInfo()
         {
             int startRange = -1;
-            int endRange = -1;
-            string rExp = "(From: .{0,}\v)" +
-                "(Sent: .{0,}\v)" +
-                "(To: .{0,}\v)" +
-                "(Cc: .{0,}\v){0,1}" +
-                "(Subject: .{0,}\r\r)";
-            //TODO Change range indexing
-            Word.Range range = mailInspector.Range();
-            range.Find.Text = rExp;
-            range.Find.ClearFormatting();
-            range.Find.Execute();
+            int length = -1;
 
-            if (range.Find.Found)
+            //this uses Word's Wildcard matching, which is separate from Regex. It's very limited.
+            //string pattern = "(From: ?*^11)(Sent: ?*^11)(To: ?*^11)(Subject: ?*)^13";
+
+            Word.Paragraphs paragraphs = mailInspector.Paragraphs;
+
+            
+            string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
+                @"(Sent: [^\n\r\v]+[\n\r\v])" +
+                @"(To: [^\n\r\v]+[\n\r\v])" +
+                @"(Cc: [^\n\r\v]+[\n\r\v])?" +
+                @"(Subject: [^\n\r\v]*[\n\r\v])";
+
+            // The message property info should all be within the same paragraph.
+            // Need to search paragraph by paragraph to get the specific Range. The Range.Text index would not work
+            foreach(Word.Paragraph p in paragraphs)
             {
-                startRange = range.Start;
-                endRange = range.End;
+                Match match = Regex.Match(p.Range.Text, rExp);
+                if (match.Success)
+                {
+                    startRange = p.Range.Start;
+                    length = p.Range.End - startRange;
+                    break;
+                }
             }
 
-            int[] propertyIndices = { startRange, endRange };
+            int[] propertyIndices = { startRange, length };
             return propertyIndices;
         }
 
-        //TODO make sure to trim as needed.
-        private void ParseContents(int segmentIndex)
+        private void ExtractMessage(int endRange)
         {
-            if (segmentIndex == -1)
+            if (endRange == -1)
             {
                 // no other messages in the chain, set to what's left of the message
                 mailInspector.Content.Copy();
@@ -189,35 +199,34 @@ namespace OEFCemail
             else
             {
                 // copy the latest message from the chain, and remove from the content.
-                //TODO Change range indexing
-                mailInspector.Range(0, segmentIndex).Copy();
-                mailInspector.Range(0, segmentIndex).Delete();
+                mailInspector.Range(0, endRange).Copy();
+                mailInspector.Range(0, endRange).Delete();
             }
         }
 
-        //TODO: Trim From/To/CC
-        private string[] ParseNextMessageProperties(int length)
+        private string[] ParseNextMessageProperties(int endRange)
         {
             /*
              * Using this format to parse:
-             * From: X
-             * Sent: X
-             * To: X
-             * Cc: X - this is optional
-             * Subject: X
+             * From: X\v
+             * Sent: X\v
+             * To: X\v
+             * Cc: X - this is optional\v
+             * Subject: X\r\r
              */
 
-            Word.Range range = mailInspector.Range(0, length);
-            mailInspector.Range(0, length).Delete();
+            Word.Range range = mailInspector.Range(0, endRange);
+            string[] split = range.Text.Split('\v');
 
-            string[] split = range.Text.Substring(0, length).Split('\v');
+            mailInspector.Range(0, endRange).Delete();
 
             string[] prop = new string[3];
-            prop[0] = split[0].Remove(0, 6); // Remove "From: "
-            prop[1] = split[1].Remove(0, 6); // Remove "Sent: "
-            prop[2] = split[2].Remove(0, 4); // Remove "To: "
-            if (split.Length == 6)
-                prop[2] += "; " + split[3].Remove(0, 4); // Remove "Cc: "
+            prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
+            prop[1] = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
+            prop[2] = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
+            if (split.Length == 5)
+                prop[2] += "; " + split[3].Remove(0, 4).TrimEnd(' '); // Remove "Cc: "
+
             return prop;
         }
         #endregion
@@ -248,7 +257,7 @@ namespace OEFCemail
                         Word.Range subjectRng = rowRng.Sentences[1];
                         Word.Range timeRng = rowRng.Sentences[2];
 
-                        char[] trim = { '\n', '\r' };
+                        char[] trim = { '\n', '\r', ' ' };
 
                         if (subjectRng.Text.TrimEnd(trim).CompareTo((string)findSub) == 0)
                         {
@@ -293,6 +302,7 @@ namespace OEFCemail
 
         #region Insert in Doc
         //TODO test to append formatted content at correct spot
+        //TODO test ALL messages get included
         //TODO test to ensure embedded images and links get included in project notes
         //TODO test no inserting empty rows
         //TODO see if you can keep styling from Outlook message.
