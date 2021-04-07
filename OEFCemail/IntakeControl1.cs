@@ -161,7 +161,6 @@ namespace OEFCemail
                 this.textBoxTime.Text,
                 this.textBoxAttach.Text
             };
-
             // Only bring up file dialog if required fields aren't empty
             if (!FieldsEmpty(content)) {
                 OpenFileDialog openFileDialog = new OpenFileDialog

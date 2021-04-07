@@ -22,7 +22,9 @@ namespace OEFCemail
         private readonly string attachment;
         private readonly Word._Application oWord;
         private readonly Word._Document oDoc;
-        private readonly Word.Document mailInspector;
+        private int mailStartRange;
+        private Word.Range mailRange;
+        private object missing = Type.Missing;
 
         public EmailSaver(string filename, string[] content, Outlook.MailItem item)
         {
@@ -37,16 +39,31 @@ namespace OEFCemail
 
             try
             {
-                oDoc = oWord.Documents.Open(filename);
-                mailInspector = item.GetInspector.WordEditor as Word.Document;
-                mailInspector.Unprotect();
-                oDoc.ActiveWindow.Visible = true;
+                oDoc = oWord.Documents.Open(filename, ref missing, ref missing, ref missing,
+                    ref missing, ref missing, ref missing, ref missing, ref missing, ref missing,
+                    ref missing, ref missing, ref missing, ref missing, ref missing);
+                AppendDoc(item);
             }
             catch (Exception exc)
             {
                 if (exc is IOException)
                     MessageBox.Show(exc + "\nError Opening Word Doc. Check that it is not already open");
-            }            
+            }
+        }
+
+        // Append all the formatted text to the end of the project notes document
+        private void AppendDoc(Outlook.MailItem item)
+        {
+            object path = System.IO.Path.GetDirectoryName(filename) + "\\(temporary).doc";
+            object format = Word.WdSaveFormat.wdFormatDocument;
+            Word.Document mailInspector = item.GetInspector.WordEditor as Word.Document;
+            mailInspector.SaveAs2(ref path, ref format);
+
+            mailStartRange = oDoc.Content.End - 1;
+            mailRange = oDoc.Range(mailStartRange, ref missing);
+            mailRange.InsertFile((string)path, ref missing, ref missing, ref missing, ref missing);
+
+            System.IO.File.Delete((string)path);
         }
 
         // Only needed to quit without saving, i.e. errors.
@@ -72,6 +89,8 @@ namespace OEFCemail
                 if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
                 {
                     bool hasMoreMessages = true;
+                    bool firstMessage = true;
+                    int lastSearchedParagraph = 0;
                     string sub = TrimSubject(subject);
                     string send = sender;
                     string rec = receiver;
@@ -80,38 +99,47 @@ namespace OEFCemail
                     {
                         // index 0: beginning index of the next message
                         // index 1: length of the email properties to parse through
-                        int[] propRanges = GetSegmentInfo();
-                        int endRange = propRanges[0];
-                        int length = propRanges[1];
+                        // index 2: the last paragraph searched for in the range.
+                        int[] propRanges = GetSegmentInfo(lastSearchedParagraph);
+                        int propStart = propRanges[0];
+                        int propLength = propRanges[1];
+                        lastSearchedParagraph = propRanges[2];
 
-                        if (endRange == -1)
+                        if (propStart == -1)
                         {
                             hasMoreMessages = false;
-                            endRange = mailInspector.Range().End;
+                            propStart = mailRange.End;
                         }
 
                         int row = FindRow(sub, dt);
                         if (row == -1)
                         {
-                            MessageBox.Show("Current message may have already been saved. Suspending process...");
-                            success = false;
+                            if (firstMessage)
+                            {
+                                MessageBox.Show("Current message may have already been saved. Suspending process...");
+                                success = false;
+                            }
                             break;
                         }
 
                         // write to Word Doc
-                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, endRange);
+                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart);
 
                         // prepare for next cycle by getting the next message's properties.
                         if (hasMoreMessages)
                         {
-                            string[] prop = ParseNextMessageProperties(length);
+                            firstMessage = false;
+                            string[] prop = ParseNextMessageProperties(propLength);
                             send = prop[0];
                             dt = ParseTime(prop[1], true);
                             rec = prop[2];
                         }
                     }
                     if (success)
+                    {
+                        mailRange.Delete();
                         oDoc.ActiveWindow.Visible = true;
+                    }
                     else
                         oWord.Quit();
                 }
@@ -124,6 +152,48 @@ namespace OEFCemail
         }
 
         #region Trim/Parse
+
+        /*
+         * Using Regex, find other messages down the chain
+         * Using this format to find other messages in a chain
+         * From: X
+         * Sent: X
+         * To: X
+         * Cc: X - this is optional
+         * Subject: X
+         */
+        private int[] GetSegmentInfo(int lastSearchedParagraph)
+        {
+            int propStart = -1;
+            int propLength = -1;
+
+            string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
+                @"(Sent: [^\n\r\v]+[\n\r\v])" +
+                @"(To: [^\n\r\v]+[\n\r\v])" +
+                @"(Cc: [^\n\r\v]+[\n\r\v])?" +
+                @"(Subject: [^\n\r\v]*[\n\r\v])";
+
+            Word.Paragraphs paragraphs = mailRange.Paragraphs;
+
+            // The message property info should all be within the same paragraph.
+            // Need to search paragraph by paragraph to get the specific Range. The Range.Text index would not work
+            for (int i = lastSearchedParagraph + 1; i <= paragraphs.Count; i++)
+            {
+                Word.Paragraph p = paragraphs[i];
+                Match match = Regex.Match(p.Range.Text, rExp);
+                if (match.Success)
+                {
+                    propStart = p.Range.Start;
+                    propLength = p.Range.End - propStart;
+                    lastSearchedParagraph = i;
+                    break;
+                }
+            }
+
+            int[] propertyIndices = { propStart, propLength, lastSearchedParagraph};
+            return propertyIndices;
+        }
+
         // Get the base subject header w/o Forward or Reply prefixes
         public string TrimSubject(string sub)
         {
@@ -158,50 +228,24 @@ namespace OEFCemail
                 pattern = "M/d/yyyy h:mm:ss tt";
             }
 
-            parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal);
+            bool parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
+
+            // Format from emails can sometimes include seconds, though it seems rare. Try parsing again.
+            if(!parsed && moreMsg)
+            {
+                pattern = "dddd, MMMM d, yyyy h:mm:ss tt";
+                parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
+            }
+            
+            if (!parsed) // Throw an exception if parsing the time still doesn't work
+            {
+                throw new Exception("Error parsing message's sent time\n");
+            }
+
             return parsedDate;
         }
 
-        /*
-         * Using Regex, find other messages down the chain
-         * Using this format to find other messages in a chain
-         * From: X
-         * Sent: X
-         * To: X
-         * Cc: X - this is optional
-         * Subject: X
-         */
-        private int[] GetSegmentInfo()
-        {
-            int startRange = -1;
-            int length = -1;
-            
-            string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
-                @"(Sent: [^\n\r\v]+[\n\r\v])" +
-                @"(To: [^\n\r\v]+[\n\r\v])" +
-                @"(Cc: [^\n\r\v]+[\n\r\v])?" +
-                @"(Subject: [^\n\r\v]*[\n\r\v])";
-
-            Word.Paragraphs paragraphs = mailInspector.Paragraphs;
-
-            // The message property info should all be within the same paragraph.
-            // Need to search paragraph by paragraph to get the specific Range. The Range.Text index would not work
-            foreach (Word.Paragraph p in paragraphs)
-            {
-                Match match = Regex.Match(p.Range.Text, rExp);
-                if (match.Success)
-                {
-                    startRange = p.Range.Start;
-                    length = p.Range.End - startRange;
-                    break;
-                }
-            }
-
-            int[] propertyIndices = { startRange, length };
-            return propertyIndices;
-        }
-
-        private string[] ParseNextMessageProperties(int endRange)
+        private string[] ParseNextMessageProperties(int length)
         {
             /*
              * Using this format to parse:
@@ -212,10 +256,12 @@ namespace OEFCemail
              * Subject: X\r\r
              */
 
-            Word.Range range = mailInspector.Range(0, endRange);
-            string[] split = range.Text.Split('\v');
+            Word.Range range = mailRange.Duplicate;
+            range.Start = mailStartRange;
+            range.End = mailStartRange += length;
+            string s = range.Text;
 
-            mailInspector.Range(0, endRange).Delete();
+            string[] split = range.Text.Split('\v');
 
             string[] prop = new string[3];
             prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
@@ -260,6 +306,8 @@ namespace OEFCemail
                         if (subjectRng.Text.TrimEnd(trim).CompareTo((string)findSub) == 0)
                         {
                             gonePastThread = true;
+
+                            //TODO: Include a check in case two DateTimes are the same, but the content hasn't been included.
                             int result = CompareDates(timeRng.Text.TrimEnd(trim), dt);
                             if (result < 0)
                             { //The current row has an earlier timestamp
@@ -277,7 +325,7 @@ namespace OEFCemail
                                 row = -1;
                             }
                         }
-                        else if (gonePastThread) // If past the rows with the current subject header, break out of loof
+                        else if (gonePastThread) // If past the rows with the current subject header, break out of loop
                             break;
                     }
                     
@@ -307,9 +355,13 @@ namespace OEFCemail
 
             bool addToEnd = (row == 0);
             int rowCount = oTbl.Rows.Count;
+            int start = mailRange.Start;
+            int diff;
+            int length = endRange - mailStartRange;
 
             if (addToEnd) // the email subject wasn't found in the Project notes
             {
+                // int row represents the exact row to insert the message into
                 row = GetLastRow(oTbl, rowCount);
             }
 
@@ -317,21 +369,37 @@ namespace OEFCemail
             {
                 // add a row to the very end
                 InsertRow(oTbl);
-            } else if (!addToEnd)
+            } else if(!addToEnd)
             {
                 // add a row somewhere in the middle
-                InsertRow(oTbl, oTbl.Rows[row]);// row representing the row that should immediately preceed an inserted row
-                row += 1; // row now is the row that we will insert into
+                // int row represents the row that should immediately preceed an inserted row
+                if(oTbl.Rows.Count > 1 && row == 1)
+                {
+                    // If the row is the first row, then it may insert a row before the first row. This insures it inserts the row after.
+                    InsertRow(oTbl, oTbl.Rows[row + 1]);
+                }
+                else {
+                    InsertRow(oTbl, oTbl.Rows[row]);
+                }
+
+                row += 1; // row now is the exact row that we will insert into
+            }
+
+            if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
+            {
+                diff = mailRange.Start - start;
+                mailStartRange += diff;
+                endRange += diff;
+                start = mailRange.Start;
             }
 
             Word.Range tblRange = oTbl.Cell(row, 1).Range;
+            Word.Range range = mailRange.Duplicate;
+            range.Start = mailStartRange;
+            range.End = endRange;
 
-            mailInspector.Range(0, endRange).Copy();
-
-            tblRange.Paste();
-            Clipboard.Clear();
-
-            mailInspector.Range(0, endRange).Delete();
+            string s = range.Text;
+            tblRange.FormattedText = range.FormattedText;
 
             tblRange.InsertBefore(
                 "[Subject: " + sub + "]\n" + //subject
@@ -342,6 +410,13 @@ namespace OEFCemail
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
+
+            if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
+            {
+                diff = mailRange.Start - start;
+                mailStartRange += diff + length;
+                endRange += diff;
+            }
         }
 
         // Find a row at the end of the table to append the contents to
@@ -350,7 +425,7 @@ namespace OEFCemail
             int row;
 
             char[] trim = { '\r', '\a', '\n', '\v', ' ' };
-            // If the last row has content in it, set the row to the next row after it
+            // If the very last row has content in it, set the row to the next row after it
             if (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length > 0)
                 row = rowCount + 1;
             else
@@ -359,6 +434,8 @@ namespace OEFCemail
                 while (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length == 0)
                 {
                     rowCount--;
+                    if (rowCount == 0)
+                        break;
                 }
                 row = rowCount + 1;
             }
