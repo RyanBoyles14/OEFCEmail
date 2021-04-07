@@ -123,7 +123,7 @@ namespace OEFCemail
                         }
 
                         // write to Word Doc
-                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart);
+                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart, firstMessage);
 
                         // prepare for next cycle by getting the next message's properties.
                         if (hasMoreMessages)
@@ -169,7 +169,7 @@ namespace OEFCemail
 
             string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
                 @"(Sent: [^\n\r\v]+[\n\r\v])" +
-                @"(To: [^\n\r\v]+[\n\r\v])" +
+                @"(To: [^\n\r\v]+[\n\r\v])?" +
                 @"(Cc: [^\n\r\v]+[\n\r\v])?" +
                 @"(Subject: [^\n\r\v]*[\n\r\v])";
 
@@ -218,17 +218,19 @@ namespace OEFCemail
         private DateTime ParseTime(string t, bool moreMsg)
         {
             string pattern;
-            DateTime parsedDate;
-            if (moreMsg) {
+            if (moreMsg)
+            {
                 // Using the Format from emails in the chain: "Day, Month d, yyyy h:mm xM"
                 // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
                 pattern = "dddd, MMMM d, yyyy h:mm tt";
-            } else {
+            }
+            else
+            {
                 // Format from textBoxTime.Text: "x/xx/20xx x:xx:xx xM"
                 pattern = "M/d/yyyy h:mm:ss tt";
             }
 
-            bool parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
+            bool parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out DateTime parsedDate);
 
             // Format from emails can sometimes include seconds, though it seems rare. Try parsing again.
             if(!parsed && moreMsg)
@@ -259,7 +261,6 @@ namespace OEFCemail
             Word.Range range = mailRange.Duplicate;
             range.Start = mailStartRange;
             range.End = mailStartRange += length;
-            string s = range.Text;
 
             string[] split = range.Text.Split('\v');
 
@@ -278,7 +279,7 @@ namespace OEFCemail
         //TODO test saving to files some of the email thread already saved.
         private int FindRow(string sub, DateTime dt)
         {
-            int row = 0;
+            int row = -2;
             Word.Table oTbl = oDoc.Tables[1];
             Word.Range rng = oTbl.Range; // Assuming there is only one table in the project notes
             object findSub = "[Subject: " + sub + "]"; // Using the new note format "[Subject: X]"
@@ -317,8 +318,6 @@ namespace OEFCemail
                             else if (result > 0)
                             {
                                 row = i - 1;
-                                if (row == 0)
-                                    row++;
                             }
                             else
                             { //Usually means the current notes are already intaken.
@@ -349,11 +348,11 @@ namespace OEFCemail
         #region Insert in Doc
         //TODO test to append formatted content at correct spot
         //TODO test no inserting empty rows/deleting existing rows (specifically with email threads)
-        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange)
+        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange, bool firstMessage)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
-            bool addToEnd = (row == 0);
+            bool addToEnd = (row == -2);
             int rowCount = oTbl.Rows.Count;
             int start = mailRange.Start;
             int diff;
@@ -372,17 +371,8 @@ namespace OEFCemail
             } else if(!addToEnd)
             {
                 // add a row somewhere in the middle
-                // int row represents the row that should immediately preceed an inserted row
-                if(oTbl.Rows.Count > 1 && row == 1)
-                {
-                    // If the row is the first row, then it may insert a row before the first row. This insures it inserts the row after.
-                    InsertRow(oTbl, oTbl.Rows[row + 1]);
-                }
-                else {
-                    InsertRow(oTbl, oTbl.Rows[row]);
-                }
-
-                row += 1; // row now is the exact row that we will insert into
+                // increment row to the row we want to insert into
+                InsertRow(oTbl, oTbl.Rows[++row]);
             }
 
             if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
@@ -398,24 +388,24 @@ namespace OEFCemail
             range.Start = mailStartRange;
             range.End = endRange;
 
-            string s = range.Text;
             tblRange.FormattedText = range.FormattedText;
 
+            string format = "\n";
+            if (firstMessage)
+                format = format + "\n";
+
             tblRange.InsertBefore(
-                "[Subject: " + sub + "]\n" + //subject
-                t + "\n"); //time
+            "[Subject: " + sub + "]\n" + t + format);
 
             if (!attachment.Equals(""))
                 tblRange.InsertAfter("\n(Attachment:" + attachment + ")"); //attachments
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
-
             if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
             {
                 diff = mailRange.Start - start;
                 mailStartRange += diff + length;
-                endRange += diff;
             }
         }
 
@@ -453,29 +443,6 @@ namespace OEFCemail
             oTbl.Rows.Add();
         }
         #endregion
-
-        public void wait(int milliseconds)
-        {
-            var timer1 = new System.Windows.Forms.Timer();
-            if (milliseconds == 0 || milliseconds < 0) return;
-
-            // Console.WriteLine("start wait timer");
-            timer1.Interval = milliseconds;
-            timer1.Enabled = true;
-            timer1.Start();
-
-            timer1.Tick += (s, e) =>
-            {
-                timer1.Enabled = false;
-                timer1.Stop();
-                // Console.WriteLine("stop wait timer");
-            };
-
-            while (timer1.Enabled)
-            {
-                Application.DoEvents();
-            }
-        }
     }
 
 }
