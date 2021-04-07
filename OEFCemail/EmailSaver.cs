@@ -265,9 +265,15 @@ namespace OEFCemail
             string[] split = range.Text.Split('\v');
 
             string[] prop = new string[3];
-            prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
-            prop[1] = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
-            prop[2] = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
+            try
+            {
+                prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
+                prop[1] = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
+                prop[2] = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
+            } catch
+            {
+                throw new Exception("Error parsing messages in the chain.\n");
+            }
             if (split.Length == 5)
                 prop[2] += "; " + split[3].Remove(0, 4).TrimEnd(' '); // Remove "Cc: "
 
@@ -322,6 +328,7 @@ namespace OEFCemail
                             else
                             { //Usually means the current notes are already intaken.
                                 row = -1;
+                                break;
                             }
                         }
                         else if (gonePastThread) // If past the rows with the current subject header, break out of loop
@@ -366,8 +373,19 @@ namespace OEFCemail
 
             if (row > rowCount)
             {
-                // add a row to the very end
-                InsertRow(oTbl);
+                // Inserting rows isn't convenient. It will insert it before the very last row.
+                // This is a work around. Add a row to the very end by copying the last row's contents into the row before it.
+                InsertRow(oTbl, oTbl.Rows[rowCount]);
+
+                object oChar = Word.WdUnits.wdCharacter;
+
+                Word.Range copyFrom = oTbl.Rows[row].Cells[1].Range;
+                copyFrom.MoveEnd(ref oChar, -1);
+                oTbl.Rows[rowCount].Cells[1].Range.FormattedText = copyFrom.FormattedText;
+
+                copyFrom = oTbl.Rows[row].Cells[2].Range;
+                copyFrom.MoveEnd(ref oChar, -1);
+                oTbl.Rows[rowCount].Cells[2].Range.FormattedText = copyFrom.FormattedText;
             } else if(!addToEnd)
             {
                 // add a row somewhere in the middle
@@ -384,15 +402,24 @@ namespace OEFCemail
             }
 
             Word.Range tblRange = oTbl.Cell(row, 1).Range;
+
             Word.Range range = mailRange.Duplicate;
             range.Start = mailStartRange;
             range.End = endRange;
 
-            tblRange.FormattedText = range.FormattedText;
+            // When the projects notes table have no empty rows, it can't copy from one range to the other. This shouldn't usually happen based on our template document.
+            try
+            {
+                tblRange.FormattedText = range.FormattedText;
+            }
+            catch 
+            {
+                throw new Exception("Error copying text over.\n");
+            }
 
             string format = "\n";
             if (firstMessage)
-                format = format + "\n";
+                format += "\n";
 
             tblRange.InsertBefore(
             "[Subject: " + sub + "]\n" + t + format);
@@ -436,11 +463,6 @@ namespace OEFCemail
         private void InsertRow(Word.Table oTbl, object rowRef)
         {
             oTbl.Rows.Add(ref rowRef);
-        }
-
-        private void InsertRow(Word.Table oTbl)
-        {
-            oTbl.Rows.Add();
         }
         #endregion
     }
