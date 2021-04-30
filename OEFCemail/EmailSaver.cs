@@ -14,16 +14,23 @@ namespace OEFCemail
 {
     class EmailSaver
     {
+        // Mail properties
         private readonly string filename;
         private readonly string subject;
         private readonly string sender;
         private readonly string receiver;
         private readonly string time;
-        private readonly string attachment;
+        private string attachment;
+
+        // Document objects
         private readonly Word._Application oWord;
         private readonly Word._Document oDoc;
+
+        // Ranges
         private int mailStartRange;
         private Word.Range mailRange;
+
+        // missing reference
         private object missing = Type.Missing;
 
         public EmailSaver(string filename, string[] content, Outlook.MailItem item)
@@ -51,7 +58,13 @@ namespace OEFCemail
             }
         }
 
-        // Append all the formatted text to the end of the project notes document
+        /*
+         * Append all the formatted text to the end of the project notes document
+         * Requires saving the Outlook email as a temporary Document in order to preserve the formatting
+         * It needs to be a separate document in order to insert the temp document into the Notes document
+         * Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
+         * After inserting the file, delete the temporary file
+         */
         private void AppendDoc(Outlook.MailItem item)
         {
             object path = System.IO.Path.GetDirectoryName(filename) + "\\(temporary).doc";
@@ -66,9 +79,10 @@ namespace OEFCemail
             System.IO.File.Delete((string)path);
         }
 
-        // Only needed to quit without saving, i.e. errors.
+        // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
         public void SuspendProcess()
         {
+            // In the case the document is closed when trying to close it
             try {
                 object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
                 oWord.Quit(ref saveChanges);
@@ -79,8 +93,6 @@ namespace OEFCemail
             
         }
 
-        //TODO progress bar?
-        //TODO trim down whitespace/signoffs?
         public void Save()
         {
             bool success = true;
@@ -89,17 +101,21 @@ namespace OEFCemail
                 if (!oDoc.ReadOnly) // user can still open the file, but the program cannot save to it
                 {
                     bool hasMoreMessages = true;
-                    bool firstMessage = true;
+                    bool topMessage = true;
                     int lastSearchedParagraph = 0;
+
                     string sub = TrimSubject(subject);
                     string send = sender;
                     string rec = receiver;
                     DateTime dt = ParseTime(time, false); // time for the top message
+
                     while (hasMoreMessages)
                     {
-                        // index 0: beginning index of the next message
-                        // index 1: length of the email properties to parse through
-                        // index 2: the last paragraph searched for in the range.
+                        /* 
+                         * index 0: beginning index of the next message
+                         * index 1: length of the email properties to parse through
+                         * index 2: the last paragraph searched for in the range.
+                         */
                         int[] propRanges = GetSegmentInfo(lastSearchedParagraph);
                         int propStart = propRanges[0];
                         int propLength = propRanges[1];
@@ -111,10 +127,10 @@ namespace OEFCemail
                             propStart = mailRange.End;
                         }
 
-                        int row = FindRow(sub, dt);
+                        int row = FindRow(sub, dt, send, rec, propStart, attachment, topMessage);
                         if (row == -1)
                         {
-                            if (firstMessage)
+                            if (topMessage)
                             {
                                 MessageBox.Show("Current message may have already been saved. Suspending process...");
                                 success = false;
@@ -123,18 +139,20 @@ namespace OEFCemail
                         }
 
                         // write to Word Doc
-                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart, firstMessage);
+                        InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart, topMessage);
 
                         // prepare for next cycle by getting the next message's properties.
                         if (hasMoreMessages)
                         {
-                            firstMessage = false;
+                            topMessage = false;
                             string[] prop = ParseNextMessageProperties(propLength);
                             send = prop[0];
                             dt = ParseTime(prop[1], true);
                             rec = prop[2];
+                            attachment = "";
                         }
-                    }
+                    } // while (hasMoreMessages)
+
                     if (success)
                     {
                         mailRange.Delete();
@@ -142,7 +160,7 @@ namespace OEFCemail
                     }
                     else
                         oWord.Quit();
-                }
+                } // if (!oDoc.ReadOnly)
             }
             else
             {
@@ -153,20 +171,20 @@ namespace OEFCemail
 
         #region Trim/Parse
 
-        /*
-         * Using Regex, find other messages down the chain
-         * Using this format to find other messages in a chain
-         * From: X
-         * Sent: X
-         * To: X
-         * Cc: X - this is optional
-         * Subject: X
-         */
+        // Using Regex, find any messages in a chain, either forwarded or replied messages
         private int[] GetSegmentInfo(int lastSearchedParagraph)
         {
             int propStart = -1;
             int propLength = -1;
 
+            /*
+             * Using this format to find other messages in a chain
+             * From: X
+             * Sent: X
+             * To: X
+             * Cc: X - this is optional
+             * Subject: X
+             */
             string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
                 @"(Sent: [^\n\r\v]+[\n\r\v])" +
                 @"(To: [^\n\r\v]+[\n\r\v])?" +
@@ -176,7 +194,7 @@ namespace OEFCemail
             Word.Paragraphs paragraphs = mailRange.Paragraphs;
 
             // The message property info should all be within the same paragraph.
-            // Need to search paragraph by paragraph to get the specific Range. The Range.Text index would not work
+            // Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
             for (int i = lastSearchedParagraph + 1; i <= paragraphs.Count; i++)
             {
                 Word.Paragraph p = paragraphs[i];
@@ -232,14 +250,14 @@ namespace OEFCemail
 
             bool parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out DateTime parsedDate);
 
-            // Format from emails can sometimes include seconds, though it seems rare. Try parsing again.
+            // Format from emails can sometimes include seconds, though it seems rare. Try parsing again if the first parse didn't work
             if(!parsed && moreMsg)
             {
                 pattern = "dddd, MMMM d, yyyy h:mm:ss tt";
                 parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
             }
             
-            if (!parsed) // Throw an exception if parsing the time still doesn't work
+            if (!parsed) // Throw an exception if parsing the second time still doesn't work
             {
                 throw new Exception("Error parsing message's sent time\n");
             }
@@ -249,15 +267,8 @@ namespace OEFCemail
 
         private string[] ParseNextMessageProperties(int length)
         {
-            /*
-             * Using this format to parse:
-             * From: X\v
-             * Sent: X\v
-             * To: X\v
-             * Cc: X - this is optional\v
-             * Subject: X\r\r
-             */
-
+            // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
+            // Must be done locally! Cannot be moved to another function
             Word.Range range = mailRange.Duplicate;
             range.Start = mailStartRange;
             range.End = mailStartRange += length;
@@ -265,6 +276,16 @@ namespace OEFCemail
             string[] split = range.Text.Split('\v');
 
             string[] prop = new string[3];
+
+            /*
+             * Using this format:
+             * 
+             * From: X\v
+             * Sent: X\v
+             * To: X\v
+             * Cc: X - this is optional\v
+             * Subject: X\r\r
+             */
             try
             {
                 prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
@@ -282,8 +303,7 @@ namespace OEFCemail
         #endregion
 
         #region Find Rows
-        //TODO test saving to files some of the email thread already saved.
-        private int FindRow(string sub, DateTime dt)
+        private int FindRow(string sub, DateTime dt, string send, string rec, int propStart, string attachment, bool topMessage)
         {
             int row = -2;
             Word.Table oTbl = oDoc.Tables[1];
@@ -300,22 +320,23 @@ namespace OEFCemail
                 bool gonePastThread = false;
                 for (int i = oTbl.Rows.Count; i > 0; i--)
                 {
-                    Word.Range rowRng = oTbl.Rows[i].Range;
-                    rowRng.Find.ClearFormatting();
+                    Word.Range contentRow = oTbl.Cell(i,1).Range;
+                    contentRow.Find.ClearFormatting();
 
-                    if (rowRng.Sentences.Count >= 2)
+                    if (contentRow.Sentences.Count >= 2)
                     {
-                        Word.Range subjectRng = rowRng.Sentences[1];
-                        Word.Range timeRng = rowRng.Sentences[2];
+                        Word.Range subjectRng = contentRow.Sentences[1];
+                        Word.Range timeRng = contentRow.Sentences[2];
 
-                        char[] trim = { '\n', '\r', ' ' };
+                        char[] trim = { '\n', '\r', '\a', ' ' };
 
                         if (subjectRng.Text.TrimEnd(trim).CompareTo((string)findSub) == 0)
                         {
                             gonePastThread = true;
 
-                            //TODO: Include a check in case two DateTimes are the same, but the content hasn't been included.
-                            int result = CompareDates(timeRng.Text.TrimEnd(trim), dt);
+                            // the top-most message will have seconds in the timestamp
+                            // Need to remove them for an equal comparison.
+                            int result = CompareDates(timeRng.Text.TrimEnd(trim), dt.AddSeconds(-dt.Second)); 
                             if (result < 0)
                             { //The current row has an earlier timestamp
                                 row = i;
@@ -325,25 +346,73 @@ namespace OEFCemail
                             {
                                 row = i - 1;
                             }
-                            else
-                            { //Usually means the current notes are already intaken.
-                                row = -1;
-                                break;
+                            else 
+                            {
+                                // the time stamps are the same. Since forwarded messages don't include seconds,
+                                // two separate messages can have the same time stamps.
+
+                                // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
+                                // Must be done locally! Cannot be moved to another function
+                                Word.Range mail = mailRange.Duplicate;
+                                mail.Start = mailStartRange; 
+                                mail.End = propStart;
+
+                                // There can be variation between the characters surrounding an email address. Trim it, then compare
+                                string senderText = oTbl.Cell(i, 2).Range.Text;
+                                senderText = senderText.Replace('(', '<').Replace(')', '>').Trim(trim);
+                                send = send.Replace('(', '<').Replace(')', '>').Trim(trim);
+                                rec = rec.Replace('(', '<').Replace(')', '>').Trim(trim);
+
+                                // Check if message has the same senders and receivers
+                                if (senderText.Equals(send + " to " + rec))
+                                {
+                                    // two return characters always shows up after the time
+                                    // Any forwarded/replied messages have return characters at the start of the message
+                                    //  The top-most message does not have a return character at its start, so we have to add it in
+                                    string format = "\r";
+                                    if (topMessage)
+                                        format += "\r";
+
+                                    // create a string that can best match the contents in the cell if they are the same message.
+                                    string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + format + mail.Text;
+
+                                    // If these aren't attachments, we need to trim the end of the message
+                                    //  (since we're also trimming the end of the cell's text for comparing)
+                                    //  If there are attachments, no whitespace or return characters are included, so no trimming needed.
+                                    if (!attachment.Equals(""))
+                                    {
+                                        m += "\r(Attachment: " + attachment.Trim(trim) + ")";
+                                    }
+                                    else
+                                    {
+                                        m = m.TrimEnd(trim);
+                                    }
+                                        
+
+                                    // In the case where messages with the same sender/receiver and timestamp have different content
+                                    // Compare content (assumes that no editting was involved with the table cell or the Outlook message)
+                                    if (contentRow.Text.Trim(trim).Equals(m))
+                                    {
+                                        row = -1; //Usually means the current notes are already intaken.
+                                        break;
+                                    }
+                                }
+
+                                row = i;
                             }
                         }
                         else if (gonePastThread) // If past the rows with the current subject header, break out of loop
                             break;
-                    }
-                    
-                }
-            }
+                    } // if (contentRow.Sentences.Count >= 2)
+
+                } // for (int i = oTbl.Rows.Count; i > 0; i--)
+            } // if (rng.Find.Execute(ref findSub))
 
             return row;
         }
 
         private int CompareDates(string t, DateTime dt)
         {
-
             string pattern = "MM-dd-yy h:mmtt"; // Using the new note format
             DateTime parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal);
 
@@ -353,9 +422,7 @@ namespace OEFCemail
         #endregion
 
         #region Insert in Doc
-        //TODO test to append formatted content at correct spot
-        //TODO test no inserting empty rows/deleting existing rows (specifically with email threads)
-        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange, bool firstMessage)
+        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
@@ -386,7 +453,8 @@ namespace OEFCemail
                 copyFrom = oTbl.Rows[row].Cells[2].Range;
                 copyFrom.MoveEnd(ref oChar, -1);
                 oTbl.Rows[rowCount].Cells[2].Range.FormattedText = copyFrom.FormattedText;
-            } else if(!addToEnd)
+            }
+            else if(!addToEnd)
             {
                 // add a row somewhere in the middle
                 // increment row to the row we want to insert into
@@ -403,8 +471,10 @@ namespace OEFCemail
 
             Word.Range tblRange = oTbl.Cell(row, 1).Range;
 
+            // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
+            // Must be done locally! Cannot be moved to another function
             Word.Range range = mailRange.Duplicate;
-            range.Start = mailStartRange;
+            range.Start = mailStartRange; 
             range.End = endRange;
 
             // When the projects notes table have no empty rows, it can't copy from one range to the other. This shouldn't usually happen based on our template document.
@@ -417,15 +487,21 @@ namespace OEFCemail
                 throw new Exception("Error copying text over.\n");
             }
 
+            // The top-most message doesn't have any empty newlines before the start
+            // Insert two after the time to match the formatting of forwarded/replied messages.
             string format = "\n";
-            if (firstMessage)
+            if (topMessage)
+            {
                 format += "\n";
+            }
 
             tblRange.InsertBefore(
             "[Subject: " + sub + "]\n" + t + format);
 
+            char[] trim = { '\n', '\r', '\a', ' ' };
+
             if (!attachment.Equals(""))
-                tblRange.InsertAfter("\n(Attachment:" + attachment + ")"); //attachments
+                tblRange.InsertAfter("\n(Attachment: " + attachment.Trim(trim) + ")"); //attachments
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 

@@ -16,6 +16,8 @@ namespace OEFCemail
         const string SenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
 
         private bool ProjectTextBoxActive = true; // for styling the project type radio buttons
+
+        private Outlook.MailItem mailItem;
         
         public IntakeControl1()
         {
@@ -43,26 +45,26 @@ namespace OEFCemail
             return null;
         }
 
-        private void ButtonAutoFill_Click(object sender, EventArgs e)
+        public void SetMailItem(Outlook.MailItem mi)
         {
-            Outlook.MailItem item = GetMailItem();
-            if (item != null)
-            {
-                this.textBoxSubject.Text = item.Subject;
-                this.textBoxSender.Text = item.SenderName.ToString();
-                // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
-                string senderAddress = item.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
-                this.textBoxSender.Text += " (" + senderAddress + ")";
-                this.textBoxTime.Text = item.ReceivedTime.ToString();
+            mailItem = mi;
+        }
 
-                // in the case the attachments/recipients have values in this, empty them
-                this.textBoxReceiver.Text = "";
-                this.textBoxAttach.Text = "";
+        public void AutoFillFields()
+        {
+            this.textBoxSubject.Text = mailItem.Subject;
+            this.textBoxSender.Text = mailItem.SenderName.ToString();
+            // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
+            string senderAddress = mailItem.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
+            this.textBoxSender.Text += " (" + senderAddress + ")";
+            this.textBoxTime.Text = mailItem.ReceivedTime.ToString();
 
-                FillRecipientsTextBox(item);
-                FillAttachmentsTextBox(item);
-            }
+            // in the case the attachments/recipients have values in this, empty them
+            this.textBoxReceiver.Text = "";
+            this.textBoxAttach.Text = "";
 
+            FillRecipientsTextBox(mailItem);
+            FillAttachmentsTextBox(mailItem);
         }
 
         private void FillRecipientsTextBox(Outlook.MailItem item)
@@ -91,6 +93,10 @@ namespace OEFCemail
                 if (!IsEmbedded(att))
                     this.textBoxAttach.Text += att.FileName + ", ";
             }
+
+            // If there are attachments, remove the final ", " at the end
+            if (!this.textBoxAttach.Text.Equals(""))
+                this.textBoxAttach.Text = this.textBoxAttach.Text.Remove(this.textBoxAttach.Text.Length - 2);
         }
 
         // check if attachment is embedded. Returns true if it is
@@ -128,21 +134,28 @@ namespace OEFCemail
 
         private void ButtonSaveEmail_Click(object sender, EventArgs e)
         {
-            Outlook.MailItem item = GetMailItem();
-            string dir = GetProjectDirectory();
-
-            SaveFileDialog saveFileDialog = new SaveFileDialog
+            if (mailItem != null)
             {
-                Filter = "Outlook Message File|*.msg",
-                Title = "Save an Email",
-                RestoreDirectory = true,
-                InitialDirectory = dir
-            };
-            saveFileDialog.ShowDialog();
+                string dir = GetProjectDirectory();
 
-            // If the file name is not an empty string open it for saving.
-            if (saveFileDialog.FileName != "")
-                item.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "Outlook Message File|*.msg",
+                    Title = "Save an Email",
+                    RestoreDirectory = true,
+                    InitialDirectory = dir,
+                    FileName = mailItem.Subject
+                };
+                saveFileDialog.ShowDialog();
+
+                // If the file name is not an empty string open it for saving.
+                if (saveFileDialog.FileName != "")
+                    mailItem.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
+            }
+            else
+            {
+                MessageBox.Show("Mail Item Not Selected.");
+            }
 
         }
         #endregion
@@ -150,43 +163,53 @@ namespace OEFCemail
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
-            Outlook.MailItem item = GetMailItem();
-
-            string dir = GetProjectDirectory();
-            string[] content = 
+            if(mailItem != null)
             {
-                this.textBoxSubject.Text,
-                this.textBoxSender.Text,
-                this.textBoxReceiver.Text,
-                this.textBoxTime.Text,
-                this.textBoxAttach.Text
-            };
-            // Only bring up file dialog if required fields aren't empty
-            if (!FieldsEmpty(content)) {
-                OpenFileDialog openFileDialog = new OpenFileDialog
+                string dir = GetProjectDirectory();
+                string[] content =
                 {
-                    Filter = "Word Documents|*.docx",
-                    Title = "Open a Word Doc File",
-                    RestoreDirectory = true,
-                    InitialDirectory = dir
+                    this.textBoxSubject.Text,
+                    this.textBoxSender.Text,
+                    this.textBoxReceiver.Text,
+                    this.textBoxTime.Text,
+                    this.textBoxAttach.Text
                 };
-                openFileDialog.ShowDialog();
 
-                if (openFileDialog.FileName != "")
+                if (mailItem != null)
                 {
-                    EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, content, item);
-                    try
+                    OpenFileDialog openFileDialog = new OpenFileDialog
                     {
-                        emailSaver.Save();
-                    } catch (Exception exc)
+                        Filter = "Word Documents|*.docx",
+                        Title = "Open a Word Doc File",
+                        RestoreDirectory = true,
+                        InitialDirectory = dir
+                    };
+                    openFileDialog.ShowDialog();
+
+                    if (openFileDialog.FileName != "")
                     {
-                        MessageBox.Show(exc + "\nError Saving to Word Doc. Suspending Process...");
-                        emailSaver.SuspendProcess();
+                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, content, mailItem);
+                        try
+                        {
+                            //TODO progress bar?
+                            emailSaver.Save();
+                        }
+                        catch (Exception exc)
+                        {
+                            MessageBox.Show(exc + "\nError Saving to Word Doc. Suspending Process...");
+                            emailSaver.SuspendProcess();
+                        }
                     }
                 }
             }
+            else
+            {
+                MessageBox.Show("Mail Item Not Selected.");
+            }
+            
         }
 
+        /*
         // check if required fields are empty. Display the empty fields and return true if any are empty
         private bool FieldsEmpty(string[] content)
         {
@@ -226,6 +249,7 @@ namespace OEFCemail
 
             return empty;
         }
+        */
         #endregion
 
         #region Get Filepath
@@ -272,5 +296,10 @@ namespace OEFCemail
             return "";
         }
         #endregion
+
+        private void ButtonAutoFill_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

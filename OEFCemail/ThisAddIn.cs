@@ -15,12 +15,20 @@ namespace OEFCemail
         private IntakeControl1 myIntakeControl1;
         private Microsoft.Office.Tools.CustomTaskPane intakeTaskPane;
 
+        //global variables to avoid the garabage collector
+        Outlook.Application app;
+        Outlook.Explorer activeExplorer;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             myIntakeControl1 = new IntakeControl1();
             intakeTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "My Task Pane");
             intakeTaskPane.VisibleChanged += new EventHandler(IntakeTaskPane_VisibleChanged);
+
+            app = this.Application;
+            activeExplorer = app.ActiveExplorer(); 
+            // create an event handler for if the user selects a new item
+            activeExplorer.SelectionChange += new Outlook.ExplorerEvents_10_SelectionChangeEventHandler(Item_SelectionChange);
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
@@ -47,6 +55,19 @@ namespace OEFCemail
         {
             Globals.Ribbons.IntakeRibbon.toggleButtonIntakeDisplay.Checked =
                 intakeTaskPane.Visible;
+        }
+
+        void Item_SelectionChange()
+        {
+            if (activeExplorer != null && activeExplorer.Selection.Count > 0)
+            {
+                Object obj = activeExplorer.Selection[1];
+                if (obj is Outlook.MailItem item)
+                {
+                    myIntakeControl1.SetMailItem(item);
+                    myIntakeControl1.AutoFillFields();
+                }
+            }
         }
 
         public Microsoft.Office.Tools.CustomTaskPane TaskPane
