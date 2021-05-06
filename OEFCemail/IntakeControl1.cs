@@ -30,7 +30,7 @@ namespace OEFCemail
         }
 
         #region Autofill
-        /*
+        /* -- Used when retrieving the mail item wasn't automatic.
         private Outlook.MailItem GetMailItem()
         {
             Outlook.Explorer explorer = Globals.ThisAddIn.Application.ActiveExplorer();
@@ -43,6 +43,7 @@ namespace OEFCemail
             return null;
         }
         */
+
         public void SetMailItem(Outlook.MailItem mi)
         {
             mailItem = mi;
@@ -192,12 +193,15 @@ namespace OEFCemail
                         EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, content, mailItem);
                         try
                         {
-                            //TODO progress bar?
                             emailSaver.Save();
                         }
                         catch (Exception exc)
                         {
-                            MessageBox.Show(exc + "\nError Saving to Word Doc. Suspending Process...");
+                            MessageBox.Show("Error Saving to Word Doc. Suspending Process...");
+
+                            ErrorLog log = new ErrorLog();
+                            log.WriteErrorLog(exc.ToString());
+
                             emailSaver.SuspendProcess();
                         }
                     }
@@ -210,7 +214,8 @@ namespace OEFCemail
             
         }
 
-        /*
+        /* ---------- Used when the textboxes were editable. No longer used, as content is grabbed automatically
+         * ---------- and can't be edited.
         // check if required fields are empty. Display the empty fields and return true if any are empty
         private bool FieldsEmpty(string[] content)
         {

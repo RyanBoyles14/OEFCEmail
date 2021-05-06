@@ -127,7 +127,7 @@ namespace OEFCemail
                             propStart = mailRange.End;
                         }
 
-                        int row = FindRow(sub, dt, send, rec, propStart, attachment, topMessage);
+                        int row = FindRow(sub, dt, send, rec, propStart);
                         if (row == -1)
                         {
                             if (topMessage)
@@ -151,16 +151,20 @@ namespace OEFCemail
                             rec = prop[2];
                             attachment = "";
                         }
-                    } // while (hasMoreMessages)
+                    } // endwhile (hasMoreMessages)
+
+                    mailRange.Delete();
 
                     if (success)
                     {
-                        mailRange.Delete();
                         oDoc.ActiveWindow.Visible = true;
                     }
                     else
+                    {
                         oWord.Quit();
-                } // if (!oDoc.ReadOnly)
+                    }
+
+                } // endif (!oDoc.ReadOnly)
             }
             else
             {
@@ -303,7 +307,7 @@ namespace OEFCemail
         #endregion
 
         #region Find Rows
-        private int FindRow(string sub, DateTime dt, string send, string rec, int propStart, string attachment, bool topMessage)
+        private int FindRow(string sub, DateTime dt, string send, string rec, int propStart)
         {
             int row = -2;
             Word.Table oTbl = oDoc.Tables[1];
