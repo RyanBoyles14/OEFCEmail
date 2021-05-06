@@ -30,11 +30,9 @@ namespace OEFCemail
         }
 
         #region Autofill
-
+        /*
         private Outlook.MailItem GetMailItem()
         {
-            // https://codesteps.com/2018/08/06/outlook-2010-add-in-get-mailitem-using-c/
-            // Get currently selected Outlook item on button click. If mailitem, parse the necessary fields.
             Outlook.Explorer explorer = Globals.ThisAddIn.Application.ActiveExplorer();
             if (explorer != null)
             {
@@ -44,7 +42,7 @@ namespace OEFCemail
             }
             return null;
         }
-
+        */
         public void SetMailItem(Outlook.MailItem mi)
         {
             mailItem = mi;
@@ -54,14 +52,11 @@ namespace OEFCemail
         {
             this.textBoxSubject.Text = mailItem.Subject;
             this.textBoxSender.Text = mailItem.SenderName.ToString();
+
             // alternative to item.SenderEmailAddress, more reliable to getting in-office email addresses.
             string senderAddress = mailItem.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString();
             this.textBoxSender.Text += " (" + senderAddress + ")";
             this.textBoxTime.Text = mailItem.ReceivedTime.ToString();
-
-            // in the case the attachments/recipients have values in this, empty them
-            this.textBoxReceiver.Text = "";
-            this.textBoxAttach.Text = "";
 
             FillRecipientsTextBox(mailItem);
             FillAttachmentsTextBox(mailItem);
@@ -69,6 +64,9 @@ namespace OEFCemail
 
         private void FillRecipientsTextBox(Outlook.MailItem item)
         {
+            // in the case the recipients have values in this, empty them
+            this.textBoxReceiver.Text = "";
+
             Outlook.Recipients recip = item.Recipients; //includes CCs
             for (int i = 1; i <= recip.Count; i++)
             {
@@ -86,6 +84,9 @@ namespace OEFCemail
 
         private void FillAttachmentsTextBox(Outlook.MailItem item)
         {
+            // in the case the attachments/recipients have values in this, empty them
+            this.textBoxAttach.Text = "";
+
             Outlook.Attachments attach = item.Attachments;
             for (int i = 1; i <= attach.Count; i++)
             {
@@ -107,7 +108,7 @@ namespace OEFCemail
             // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
             // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
             // flag of 4 -> the attachment is embedded in the message object's HTML body
-            // Type = 6 -> Rich Text Format. This ensures not saving embedded images, while still saving attachments.
+            // Type = 6 -> Rich Text Format. This ensures not including embedded images, while still including attachments.
             if (flag != 4 && (int)att.Type != 6)
                 return false;
 
@@ -256,10 +257,12 @@ namespace OEFCemail
         // Return file path used for initial filepath for SaveFileDialog
         private String GetProjectDirectory()
         {
-            string dir = "G:\\";
+            string dir = "G:\\"; // the directory of the Projects drive using Windows formatting
             string prj = this.textBoxProject.Text;
 
-            if (this.radioButtonPrj.Checked && !prj.Equals("") && prj.Length > 1)
+            // Given a project #, go into the folder of the year that project is in (20 + the first 2 numbers of the given prj #
+            //  and find a folder with the same project #
+            if (this.radioButtonPrj.Checked && prj.Length > 1)
             {
                 string path = dir + "20" + prj.Substring(0, 2) + " Projects\\";
                 string s = SearchDirectories(path, prj);
@@ -296,10 +299,5 @@ namespace OEFCemail
             return "";
         }
         #endregion
-
-        private void ButtonAutoFill_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 }

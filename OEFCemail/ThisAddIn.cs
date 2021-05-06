@@ -11,20 +11,21 @@ namespace OEFCemail
 
     public partial class ThisAddIn
     {
-
+        //global variables to avoid the garabage collector
         private IntakeControl1 myIntakeControl1;
         private Microsoft.Office.Tools.CustomTaskPane intakeTaskPane;
-
-        //global variables to avoid the garabage collector
         Outlook.Application app;
         Outlook.Explorer activeExplorer;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
+            // Initialize the Side TaskPane
             myIntakeControl1 = new IntakeControl1();
             intakeTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "My Task Pane");
+            // Create EventHandler to handle the pane's visibility
             intakeTaskPane.VisibleChanged += new EventHandler(IntakeTaskPane_VisibleChanged);
 
+            // Initialize the ActiveExplorer, which is used to for selecting mail items
             app = this.Application;
             activeExplorer = app.ActiveExplorer(); 
             // create an event handler for if the user selects a new item
@@ -59,6 +60,8 @@ namespace OEFCemail
 
         void Item_SelectionChange()
         {
+            // https://codesteps.com/2018/08/06/outlook-2010-add-in-get-mailitem-using-c/
+            // Get currently selected Outlook item on button click. If mailitem, parse the necessary fields.
             if (activeExplorer != null && activeExplorer.Selection.Count > 0)
             {
                 Object obj = activeExplorer.Selection[1];

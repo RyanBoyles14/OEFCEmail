@@ -366,6 +366,30 @@ namespace OEFCemail
                                 // Check if message has the same senders and receivers
                                 if (senderText.Equals(send + " to " + rec))
                                 {
+                                    string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mail.Text;
+
+                                    DialogResult dr = MessageBox.Show(
+                                        "Are the contents of the two messages below the same?\r" +
+                                        "If yes, the message found in the mail chain will not be saved.\r" +
+                                        "-------------Message in Project Notes:-------------\r"
+                                        + contentRow.Text.Trim(trim) +
+                                        "\r\r------------------Message in Mail:-----------------\r"
+                                        + m, "Compare Messages", MessageBoxButtons.YesNoCancel
+                                        );
+
+                                    switch (dr)
+                                    {
+                                        case DialogResult.Yes:
+                                            row = -1; //Usually means the current notes are already intaken.
+                                            break;
+                                        case DialogResult.No:
+                                        case DialogResult.Cancel:
+                                            row = i; //intake the current message
+                                            break;
+                                    }
+
+
+                                    /* ----Old method for comparing messages. Too inconsistent if anything in Project Notes is editted.----
                                     // two return characters always shows up after the time
                                     // Any forwarded/replied messages have return characters at the start of the message
                                     //  The top-most message does not have a return character at its start, so we have to add it in
@@ -396,9 +420,10 @@ namespace OEFCemail
                                         row = -1; //Usually means the current notes are already intaken.
                                         break;
                                     }
+                                    */
                                 }
 
-                                row = i;
+                                
                             }
                         }
                         else if (gonePastThread) // If past the rows with the current subject header, break out of loop
