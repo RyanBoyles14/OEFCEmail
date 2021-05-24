@@ -165,17 +165,9 @@ namespace OEFCemail
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
-            if(mailItem != null)
+            if(mailItem != null && !this.textBoxSubject.Text.Equals(""))
             {
                 string dir = GetProjectDirectory();
-                string[] content =
-                {
-                    this.textBoxSubject.Text,
-                    this.textBoxSender.Text,
-                    this.textBoxReceiver.Text,
-                    this.textBoxTime.Text,
-                    this.textBoxAttach.Text
-                };
 
                 if (mailItem != null)
                 {
@@ -190,9 +182,13 @@ namespace OEFCemail
 
                     if (openFileDialog.FileName != "")
                     {
-                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, content, mailItem);
+                        SetCursorToWaiting();
+                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, this.textBoxSubject.Text,
+                            this.textBoxSender.Text, this.textBoxReceiver.Text, this.textBoxTime.Text, this.textBoxAttach.Text,
+                            mailItem);
                         try
                         {
+
                             emailSaver.Save();
                         }
                         catch (Exception exc)
@@ -209,9 +205,21 @@ namespace OEFCemail
             }
             else
             {
-                MessageBox.Show("Mail Item Not Selected.");
+                if(mailItem == null)
+                    MessageBox.Show("Mail Item Not Selected.");
+                else
+                    MessageBox.Show("Mail Item Does Not Have a Subject.");
             }
-            
+
+            SetCursorToDefault();
+        }
+        private static void SetCursorToWaiting()
+        {
+            Cursor.Current = Cursors.WaitCursor;
+        }
+        private static void SetCursorToDefault()
+        {
+            Cursor.Current = Cursors.Default;
         }
 
         /* ---------- Used when the textboxes were editable. No longer used, as content is grabbed automatically

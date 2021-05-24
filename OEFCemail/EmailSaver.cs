@@ -29,18 +29,20 @@ namespace OEFCemail
         // Ranges
         private int mailStartRange;
         private Word.Range mailRange;
+        private Word.Range finalRange;
 
         // missing reference
         private object missing = Type.Missing;
 
-        public EmailSaver(string filename, string[] content, Outlook.MailItem item)
+        public EmailSaver(string filename, string subject, string sender, string receiver, string time, 
+                            string attachment, Outlook.MailItem item)
         {
             this.filename = filename;
-            subject = content[0];
-            sender = content[1];
-            receiver = content[2];
-            time = content[3];
-            attachment = content[4];
+            this.subject = subject;
+            this.sender = sender;
+            this.receiver = receiver;
+            this.time = time;
+            this.attachment = attachment;
 
             oWord = new Word.Application();
 
@@ -157,6 +159,8 @@ namespace OEFCemail
 
                     if (success)
                     {
+                        oDoc.ActiveWindow.ScrollIntoView(finalRange, false);
+                        oWord.WindowState = Microsoft.Office.Interop.Word.WdWindowState.wdWindowStateMaximize;
                         oDoc.ActiveWindow.Visible = true;
                     }
                     else
@@ -498,7 +502,7 @@ namespace OEFCemail
                 start = mailRange.Start;
             }
 
-            Word.Range tblRange = oTbl.Cell(row, 1).Range;
+            Word.Range tblRange = finalRange = oTbl.Cell(row, 1).Range;
 
             // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
             // Must be done locally! Cannot be moved to another function

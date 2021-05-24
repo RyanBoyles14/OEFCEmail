@@ -42,9 +42,9 @@ namespace OEFCemail
             this.textBoxProject = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.groupBoxRadioBtn = new System.Windows.Forms.GroupBox();
-            this.radioButtonPrj = new System.Windows.Forms.RadioButton();
-            this.radioButtonAR = new System.Windows.Forms.RadioButton();
             this.radioButtonOH = new System.Windows.Forms.RadioButton();
+            this.radioButtonAR = new System.Windows.Forms.RadioButton();
+            this.radioButtonPrj = new System.Windows.Forms.RadioButton();
             this.textBoxSubject = new System.Windows.Forms.TextBox();
             this.label7 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
@@ -60,7 +60,6 @@ namespace OEFCemail
             this.textBoxReceiver.Location = new System.Drawing.Point(80, 125);
             this.textBoxReceiver.Multiline = true;
             this.textBoxReceiver.Name = "textBoxReceiver";
-            this.textBoxReceiver.ReadOnly = true;
             this.textBoxReceiver.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxReceiver.Size = new System.Drawing.Size(275, 65);
             this.textBoxReceiver.TabIndex = 1;
@@ -73,7 +72,6 @@ namespace OEFCemail
             this.textBoxSender.Location = new System.Drawing.Point(80, 80);
             this.textBoxSender.Multiline = true;
             this.textBoxSender.Name = "textBoxSender";
-            this.textBoxSender.ReadOnly = true;
             this.textBoxSender.Size = new System.Drawing.Size(275, 30);
             this.textBoxSender.TabIndex = 2;
             // 
@@ -108,7 +106,7 @@ namespace OEFCemail
             // 
             this.textBoxTime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxTime.BackColor = System.Drawing.SystemColors.Window;
+            this.textBoxTime.BackColor = System.Drawing.SystemColors.Control;
             this.textBoxTime.Location = new System.Drawing.Point(80, 205);
             this.textBoxTime.Name = "textBoxTime";
             this.textBoxTime.ReadOnly = true;
@@ -123,7 +121,6 @@ namespace OEFCemail
             this.textBoxAttach.Location = new System.Drawing.Point(80, 240);
             this.textBoxAttach.Multiline = true;
             this.textBoxAttach.Name = "textBoxAttach";
-            this.textBoxAttach.ReadOnly = true;
             this.textBoxAttach.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxAttach.Size = new System.Drawing.Size(275, 70);
             this.textBoxAttach.TabIndex = 11;
@@ -184,6 +181,28 @@ namespace OEFCemail
             this.groupBoxRadioBtn.TabIndex = 24;
             this.groupBoxRadioBtn.TabStop = false;
             // 
+            // radioButtonOH
+            // 
+            this.radioButtonOH.AutoSize = true;
+            this.radioButtonOH.Location = new System.Drawing.Point(6, 56);
+            this.radioButtonOH.Name = "radioButtonOH";
+            this.radioButtonOH.Size = new System.Drawing.Size(72, 17);
+            this.radioButtonOH.TabIndex = 26;
+            this.radioButtonOH.TabStop = true;
+            this.radioButtonOH.Text = "Overhead";
+            this.radioButtonOH.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonAR
+            // 
+            this.radioButtonAR.AutoSize = true;
+            this.radioButtonAR.Location = new System.Drawing.Point(6, 33);
+            this.radioButtonAR.Name = "radioButtonAR";
+            this.radioButtonAR.Size = new System.Drawing.Size(59, 17);
+            this.radioButtonAR.TabIndex = 25;
+            this.radioButtonAR.TabStop = true;
+            this.radioButtonAR.Text = "At Risk";
+            this.radioButtonAR.UseVisualStyleBackColor = true;
+            // 
             // radioButtonPrj
             // 
             this.radioButtonPrj.AutoSize = true;
@@ -197,28 +216,6 @@ namespace OEFCemail
             this.radioButtonPrj.UseVisualStyleBackColor = true;
             this.radioButtonPrj.CheckedChanged += new System.EventHandler(this.RadioButtonPrj_CheckedChanged);
             // 
-            // radioButtonAR
-            // 
-            this.radioButtonAR.AutoSize = true;
-            this.radioButtonAR.Location = new System.Drawing.Point(6, 33);
-            this.radioButtonAR.Name = "radioButtonAR";
-            this.radioButtonAR.Size = new System.Drawing.Size(59, 17);
-            this.radioButtonAR.TabIndex = 25;
-            this.radioButtonAR.TabStop = true;
-            this.radioButtonAR.Text = "At Risk";
-            this.radioButtonAR.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonOH
-            // 
-            this.radioButtonOH.AutoSize = true;
-            this.radioButtonOH.Location = new System.Drawing.Point(6, 56);
-            this.radioButtonOH.Name = "radioButtonOH";
-            this.radioButtonOH.Size = new System.Drawing.Size(72, 17);
-            this.radioButtonOH.TabIndex = 26;
-            this.radioButtonOH.TabStop = true;
-            this.radioButtonOH.Text = "Overhead";
-            this.radioButtonOH.UseVisualStyleBackColor = true;
-            // 
             // textBoxSubject
             // 
             this.textBoxSubject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -227,7 +224,6 @@ namespace OEFCemail
             this.textBoxSubject.Location = new System.Drawing.Point(80, 15);
             this.textBoxSubject.Multiline = true;
             this.textBoxSubject.Name = "textBoxSubject";
-            this.textBoxSubject.ReadOnly = true;
             this.textBoxSubject.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxSubject.Size = new System.Drawing.Size(275, 50);
             this.textBoxSubject.TabIndex = 25;
