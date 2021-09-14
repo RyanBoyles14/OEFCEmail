@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
+using JR.Utils.GUI.Forms;
 
 namespace OEFCemail
 {
@@ -156,7 +157,7 @@ namespace OEFCemail
             }
             else
             {
-                MessageBox.Show("Mail Item Not Selected.");
+                FlexibleMessageBox.Show("Mail Item Not Selected.");
             }
 
         }
@@ -184,31 +185,36 @@ namespace OEFCemail
                     {
                         SetCursorToWaiting();
                         EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, this.textBoxSubject.Text,
-                            this.textBoxSender.Text, this.textBoxReceiver.Text, this.textBoxTime.Text, this.textBoxAttach.Text,
-                            mailItem);
-                        try
+                            this.textBoxSender.Text, this.textBoxReceiver.Text, this.textBoxTime.Text, this.textBoxAttach.Text);
+
+                        if (emailSaver.initialized)
                         {
+                            //Make sure to test with read-only and not "selecting" a mail item
+                            try
+                            {
+                                emailSaver.AppendDoc(mailItem);
+                                emailSaver.Save();
+                            }
+                            catch (Exception exc)
+                            {
+                                FlexibleMessageBox.Show(exc.Message);
 
-                            emailSaver.Save();
-                        }
-                        catch (Exception exc)
-                        {
-                            MessageBox.Show("Error Saving to Word Doc. Suspending Process...");
+                                ErrorLog log = new ErrorLog();
+                                log.WriteErrorLog(exc.ToString()); 
 
-                            ErrorLog log = new ErrorLog();
-                            log.WriteErrorLog(exc.ToString());
-
-                            emailSaver.SuspendProcess();
-                        }
+                                emailSaver.SuspendProcess();
+                            }
+                        } 
                     }
                 }
             }
+            else if(mailItem == null)
+            {
+                FlexibleMessageBox.Show("Mail Item Not Selected.");   
+            }
             else
             {
-                if(mailItem == null)
-                    MessageBox.Show("Mail Item Not Selected.");
-                else
-                    MessageBox.Show("Mail Item Does Not Have a Subject.");
+                FlexibleMessageBox.Show("Mail Item Does Not Have a Subject.");
             }
 
             SetCursorToDefault();
@@ -221,49 +227,6 @@ namespace OEFCemail
         {
             Cursor.Current = Cursors.Default;
         }
-
-        /* ---------- Used when the textboxes were editable. No longer used, as content is grabbed automatically
-         * ---------- and can't be edited.
-        // check if required fields are empty. Display the empty fields and return true if any are empty
-        private bool FieldsEmpty(string[] content)
-        {
-            bool empty = false;
-            string emptyFields = "";
-            for (int i = 0; i < content.Length - 1; i++)
-            {
-                if (content[i].Equals(""))
-                {
-                    //field separator
-                    if (!emptyFields.Equals(""))
-                        emptyFields += ", ";
-                    else
-                        empty = true;
-
-                    switch (i)
-                    {
-                        case 0:
-                            emptyFields += "Subject";
-                            break;
-                        case 1:
-                            emptyFields += "Sender";
-                            break;
-                        case 2:
-                            emptyFields += "Receiver";
-                            break;
-                        case 3:
-                            emptyFields += "Time";
-                            break;
-                    }
-                }
-            }
-
-            if(empty)
-                MessageBox.Show("The following fields are empty:\n" +
-                    emptyFields);
-
-            return empty;
-        }
-        */
         #endregion
 
         #region Get Filepath
@@ -306,7 +269,7 @@ namespace OEFCemail
             }
             catch (Exception e)
             {
-                MessageBox.Show("Invalid directory. Check if the Project # is correct.");
+                FlexibleMessageBox.Show("Invalid directory. Check if the Project # is correct.");
                 Console.WriteLine(e);
             }
             return "";

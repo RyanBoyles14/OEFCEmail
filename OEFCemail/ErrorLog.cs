@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Configuration;
 using System.IO;
 
@@ -20,14 +17,14 @@ namespace OEFCemail
             DateTime CurrentDateTime = DateTime.Now;
             CheckCreateLogDirectory(LogDirectory);
             string logLine = BuildLogLine(CurrentDateTime, LogMessage);
-            LogDirectory = (LogDirectory + "Log_" + LogTime(DateTime.Now) + ".txt");
+            string file = Path.Combine(LogDirectory, "Log_" + LogTime(DateTime.Now) + ".txt");
 
             lock (typeof(ErrorLog))
             {
                 StreamWriter oStreamWriter = null;
                 try
                 {
-                    oStreamWriter = new StreamWriter(LogDirectory, true);
+                    oStreamWriter = new StreamWriter(file, true);
                     oStreamWriter.WriteLine(logLine);
                     Status = true;
                 }
@@ -82,7 +79,7 @@ namespace OEFCemail
 
         private string LogTime(DateTime CurrentDateTime)
         {
-            return CurrentDateTime.ToString("dd-MM-yyyy HH:mm:ss");
+            return CurrentDateTime.ToString("yyyy-MM-dd_HH.mm.ss");
         }
     }
 }
