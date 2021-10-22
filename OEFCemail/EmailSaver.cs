@@ -5,6 +5,8 @@ using System.Windows.Forms;
 using Word = Microsoft.Office.Interop.Word;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using JR.Utils.GUI.Forms;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace OEFCemail
 {
@@ -32,8 +34,6 @@ namespace OEFCemail
         // missing reference
         private object missing = Type.Missing;
 
-        Word.Selection selection;
-
         public EmailSaver(string filename, string subject, string sender, string receiver, string time, 
                             string attachment)
         {
@@ -54,12 +54,12 @@ namespace OEFCemail
 
                 if (oDoc == null)
                 {
-                    FlexibleMessageBox.Show("Error Opening Word Document. Suspending Processing...");
+                    FlexibleMessageBox.Show("Error Opening Word Document. Terminating Processing...");
                     initialized = false;
                 }
                 else if (oDoc.ReadOnly)
                 {
-                    FlexibleMessageBox.Show("Word Document is Read-Only. Suspending Processing...");
+                    FlexibleMessageBox.Show("Word Document is Read-Only. Terminating Processing...");
                     initialized = false;
                 }
             }
@@ -67,13 +67,15 @@ namespace OEFCemail
             {
                 oWord.Quit();
 
-                FlexibleMessageBox.Show("Error Opening Word Doc. Suspending Processing...");
+                FlexibleMessageBox.Show("Error Opening Word Doc. Terminating Processing...");
                 ErrorLog log = new ErrorLog();
                 log.WriteErrorLog(exc.ToString());
                 initialized = false;
             }
 
         }
+
+        #region Add To Document
 
         /*
          * Append all the formatted text to the end of the project notes document
@@ -82,7 +84,7 @@ namespace OEFCemail
          * Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
          * After inserting the file, delete the temporary file
          */
-        public void AppendDoc(Outlook.MailItem item)
+        public void AppendToDoc(Outlook.MailItem item)
         {
             object path = System.IO.Path.GetDirectoryName(filename) + "\\(temporary).doc";
             object format = Word.WdSaveFormat.wdFormatDocument;
@@ -98,7 +100,7 @@ namespace OEFCemail
         }
 
         // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
-        public void SuspendProcess()
+        public void TerminateProcess()
         {
             // In the case an error occurs when trying to close Word
             try {
@@ -114,57 +116,57 @@ namespace OEFCemail
             
         }
 
-        public void Save()
+        public void SaveToDoc()
         {
             bool success = true;
             bool haveMoreMessages = true;
-            bool topMessage = true;
+            bool isTopMessage = true;
             int lastSearchedParagraph = 0;
+            int row = 0;
 
             string sub = TrimSubject(subject);
             string send = sender;
             string rec = receiver;
-            DateTime dt = ParseTime(time, false); // time for the top message
+            DateTime dt = ParseTime(time, true); // DateTime for the topmost message
 
             while (haveMoreMessages)
             {
-                /* 
-                    * index 0: beginning index of the next message
-                    * index 1: length of the email properties to parse through
-                    * index 2: the last paragraph searched for in the range.
-                    */
-                int[] propRanges = GetSegmentInfo(lastSearchedParagraph);
-                int propStart = propRanges[0];
-                int propLength = propRanges[1];
-                lastSearchedParagraph = propRanges[2];
+                // if there are any other messages in the email chain, get the properities of its range.
+                int[] nextMsgProperties = GetNextMsgProperties(lastSearchedParagraph);
+                int currentMsgEnd = nextMsgProperties[0]; // beginning range of the next message, also used as the end of the current message's range
+                int nextMsgLength = nextMsgProperties[1]; // length of the next messages prsegment's 
+                lastSearchedParagraph = nextMsgProperties[2]; // the last paragraph searched for in the mail's range.
 
-                if (propStart == -1)
+                // if no other messages
+                if (currentMsgEnd == -1)
                 {
                     haveMoreMessages = false;
-                    propStart = mailRange.End;
+                    currentMsgEnd = mailRange.End;
                 }
 
-                int row = FindRow(sub, dt, send, rec, propStart);
+                row = FindRow(sub, dt, currentMsgEnd, row);
+
+                // row = -1 means the current msg has already been saved into the table.
                 if (row == -1)
                 {
-                    if (topMessage)
+                    if (isTopMessage)
                     {
-                        FlexibleMessageBox.Show("Current email thread may have already been saved. Suspending process...");
+                        FlexibleMessageBox.Show("Current email thread may have already been saved. Terminating process...");
                         success = false;
                     }
                     break;
                 }
 
                 // write to Word Doc
-                InsertInDoc(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, propStart, topMessage);
+                InsertInRow(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, currentMsgEnd, isTopMessage);
 
                 // prepare for next cycle by getting the next message's properties.
                 if (haveMoreMessages)
                 {
-                    topMessage = false;
-                    string[] prop = ParseNextMessageProperties(propLength);
+                    isTopMessage = false;
+                    string[] prop = ParseNextMsgInfo(nextMsgLength);
                     send = prop[0];
-                    dt = ParseTime(prop[1], true);
+                    dt = ParseTime(prop[1], false);
                     rec = prop[2];
                     attachment = "";
                 }
@@ -172,6 +174,10 @@ namespace OEFCemail
 
             mailRange.Delete();
 
+            /*
+             * if the email saved correctly, scroll the view of the document to the row with the topmost message
+             * Bring the document into view for the user.
+             */
             if (success)
             {
                 oDoc.ActiveWindow.ScrollIntoView(finalRange, false);
@@ -187,13 +193,46 @@ namespace OEFCemail
  
         }
 
-        #region Trim/Parse
+        #endregion
 
-        // Using Regex, find any messages in a chain, either forwarded or replied messages
-        private int[] GetSegmentInfo(int lastSearchedParagraph)
+        #region Trim/Parse
+        
+        // Get the base subject header w/o Forward or Reply prefixes
+        public string TrimSubject(string sub)
         {
-            int propStart = -1;
-            int propLength = -1;
+            // Typical abbreviations that are prepended to subject lines are: "FW", "Fwd", or "RE". Search for any variation of those.
+            // Configured in case other prefixes need to be added.
+            List<String> abbr = new List<String> { "RE:", "FW:", "FWD:" };
+
+            // using Linq: return the first string "s" in abbr where sub.ToUpper() starts with "s". If none exist, returns null.
+            // https://stackoverflow.com/questions/12296089/how-to-check-if-a-string-contains-any-element-of-a-liststring
+            String str = abbr.FirstOrDefault(s => sub.ToUpper().StartsWith(s));
+            
+            // In some instances, the subject line can include multiple of these abbreviations
+            while (str != null)
+            {
+                sub = sub.Remove(0, str.Length);
+
+                // Trim any leftover spaces that may remain before the subject line
+                sub = sub.TrimStart(' ');
+
+                str = abbr.FirstOrDefault(s => sub.ToUpper().StartsWith(s));
+            }
+
+            return sub;
+        }
+
+        /* 
+         * Using Regex, find any messages in a chain, either forwarded or replied messages
+         * Return a 3-integer array with the properties of the next forwarded/replied message within the email chain
+         * index 0: beginning range of the next message, also used as the end of the current message's range
+         * index 1: length of the next message
+         * index 2: the last paragraph searched for in the mail's range.
+         */
+        private int[] GetNextMsgProperties(int lastSearchedParagraph)
+        {
+            int msgStart = -1;
+            int msgLength = -1;
 
             /*
              * Using this format to find other messages in a chain
@@ -211,98 +250,78 @@ namespace OEFCemail
 
             Word.Paragraphs paragraphs = mailRange.Paragraphs;
 
-            // The message property info should all be within the same paragraph.
-            // Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
+            /*
+             * The message property info should all be within the same paragraph.
+             * Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
+             * Adding 1 to lastSearchedParagraph, since Word object indices are 1-based, not 0-based
+             */
             for (int i = lastSearchedParagraph + 1; i <= paragraphs.Count; i++)
             {
                 Word.Paragraph p = paragraphs[i];
                 Match match = Regex.Match(p.Range.Text, rExp);
                 if (match.Success)
                 {
-                    propStart = p.Range.Start;
-                    propLength = p.Range.End - propStart;
+                    msgStart = p.Range.Start;
+                    msgLength = p.Range.End - msgStart;
                     lastSearchedParagraph = i;
                     break;
                 }
             }
 
-            int[] propertyIndices = { propStart, propLength, lastSearchedParagraph};
+            int[] propertyIndices = { msgStart, msgLength, lastSearchedParagraph};
             return propertyIndices;
         }
 
-        // Get the base subject header w/o Forward or Reply prefixes
-        public string TrimSubject(string sub)
-        {
-            // Typical Prefixes are "FW", "Fwd", or "RE". Search for any variation of those.
-            while(sub.ToUpper().StartsWith("FW:") || sub.ToUpper().StartsWith("FWD:") || sub.ToUpper().StartsWith("RE:"))
-            {
-                
-                if(sub.ToUpper().StartsWith("FWD:"))
-                    sub = sub.Remove(0, 4);
-                else
-                    sub = sub.Remove(0, 3);
-
-                // Usually, the prefixes have a space immediately proceeding. There may be abnormal situations where this isn't the case
-                // Trim any spaces at the start of the header, in case of any atypical cases
-                sub = sub.TrimStart(' ');
-            }
-
-            return sub;
-        }
-       
         // parse the time based on the typical formats from Outlook emails
-        private DateTime ParseTime(string t, bool moreMsg)
+        // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
+        private DateTime ParseTime(string time, bool isFirstMsg)
         {
             string pattern;
-            if (moreMsg)
+            if (isFirstMsg)
             {
-                // Using the Format from emails in the chain: "Day, Month d, yyyy h:mm xM"
-                // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
-                pattern = "dddd, MMMM d, yyyy h:mm tt";
+                // Format from for the timestamp for the overall email item (the topmost message): "x/xx/20xx x:xx:xx xM"
+                pattern = "M/d/yyyy h:mm:ss tt";
             }
             else
             {
-                // Format from textBoxTime.Text: "x/xx/20xx x:xx:xx xM"
-                pattern = "M/d/yyyy h:mm:ss tt";
+                // Using the Format from emails in the chain: "Day, Month d, yyyy h:mm xM"
+                pattern = "dddd, MMMM d, yyyy h:mm tt";
             }
 
-            bool parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out DateTime parsedDate);
+            bool parsed = DateTime.TryParseExact(time, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out DateTime parsedDate);
 
-            // Format from emails can sometimes include seconds, though it seems rare. Try parsing again if the first parse didn't work
-            if(!parsed && moreMsg)
+            // Format from emails in the chain can sometimes include seconds, though it seems rare. Try parsing again if the first parse didn't work
+            if(!parsed && !isFirstMsg)
             {
                 pattern = "dddd, MMMM d, yyyy h:mm:ss tt";
-                parsed = DateTime.TryParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
+                parsed = DateTime.TryParseExact(time, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
             }
             
             if (!parsed) // Throw an exception if parsing the second time still doesn't work
             {
                 throw new Exception("Error parsing message's sent time\r" +
-                    "Error occurred at text: \"" + t + "\"");
+                    "Error occurred at text: \"" + time + "\"");
             }
 
             return parsedDate;
         }
 
-        private string[] ParseNextMessageProperties(int length)
+        private string[] ParseNextMsgInfo(int length)
         {
-            // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
-            // Must be done locally! Cannot be moved to another function
-            Word.Range range = mailRange.Duplicate;
-            range.Start = mailStartRange;
-            range.End = mailStartRange += length;
+            Word.Range range = DuplicateMailRange(mailStartRange + length);
+            mailStartRange += length;
 
             string[] split = range.Text.Split('\v');
 
             string[] prop = new string[3];
 
             /*
-             * Using this format:
+             * Most emails use this format:
              * 
              * From: X\v
              * Sent: X\v
              * To: X\v
-             * Cc: X - this is optional\v
+             * Cc: X\v - this is optional
              * Subject: X\r\r
              */
             try
@@ -316,6 +335,8 @@ namespace OEFCemail
                     "Error found at text:\r" +
                     "\"" + split[0] + "\r" + split[1] + "\r" + split[2] + "\"", exc);
             }
+
+            // if it includes CC'd recipients, add to the list of recipients
             if (split.Length == 5)
                 prop[2] += "; " + split[3].Remove(0, 4).TrimEnd(' '); // Remove "Cc: "
 
@@ -323,25 +344,71 @@ namespace OEFCemail
         }
         #endregion
 
-        #region Find Rows
-        //TODO refactor FindRow? Shouldn't need to search all rows once it's found the first row to insert into... 
-        private int FindRow(string sub, DateTime dt, string send, string rec, int propStart)
+        #region Duplicate Range
+
+        // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
+        private Word.Range DuplicateMailRange(int end)
         {
-            int row = -2;
+            Word.Range mail = mailRange.Duplicate;
+            mail.Start = mailStartRange;
+            mail.End = end;
+
+            return mail;
+        }
+
+        #endregion
+
+        #region Compare
+
+        private DialogResult CompareMessages(Word.Range contentRow, String sub, DateTime dt, int propStart)
+        {
+            Word.Range mail = DuplicateMailRange(propStart);
+
+            string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mail.Text;
+            char[] trim = { '\n', '\r', '\a', ' ' };
+
+            return FlexibleMessageBox.Show(
+                "Are the contents of the two messages below the same?\r" +
+                "If yes, the message found in the mail chain will not be saved.\r\r" +
+                "-------------Message in Project Notes:-------------\r\r"
+                + contentRow.Text.Trim(trim) +
+                "\r\r\r------------------Message in Mail:-----------------\r\r"
+                + m, "Compare Messages", MessageBoxButtons.YesNoCancel
+            );
+        }
+
+        private int CompareDates(string t, DateTime dt)
+        {
+            string pattern = "MM-dd-yy h:mmtt"; // Using the new note format
+            DateTime parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal);
+
+            return DateTime.Compare(parsedDate, dt);
+        }
+
+        #endregion
+
+        #region Find Rows 
+        private int FindRow(string sub, DateTime dt, int propStart, int row)
+        {
 
             Word.Table oTbl = oDoc.Tables[1];
             Word.Range rng = oTbl.Range; // Assuming there is only one table in the project notes
             object findSub = "[Subject: " + sub + "]"; // Using the new note format "[Subject: X]"
 
-            // If subject is found in the table, then find the row.
+            // row = 0 or row = -1 means the prev message was added to the end of the table
+            // or means the current message is the first message in the thread
+            int i = (row == 0 || row == -1) ? oTbl.Rows.Count : row;
+
+            // If mail subject is found in the table, then find the row.
             // Else, we can assume we can append it to the latest row
             if (rng.Find.Execute(ref findSub))
             {
                 oTbl.Columns[1].Select();
-                // Search all rows, from the bottom up (most recent), for any with the current mail subject
 
+                // Search for the current mail subject in all rows, starting from the bottom (most recent)
+                // or from the previously saved message
                 bool foundSubjectHeader = false;
-                for (int i = oTbl.Rows.Count; i > 0; i--)
+                for (; i > 0; i--)
                 {
                     Word.Range contentRow = oTbl.Cell(i,1).Range;
                     contentRow.Find.ClearFormatting();
@@ -370,23 +437,7 @@ namespace OEFCemail
                             {
                                 // the time stamps are the same. Since forwarded messages don't include seconds,
                                 // two separate messages can have the same time stamps.
-
-                                // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
-                                // Must be done locally! Cannot be moved to another function
-                                Word.Range mail = mailRange.Duplicate;
-                                mail.Start = mailStartRange;
-                                mail.End = propStart;
-
-                                string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mail.Text;
-
-                                DialogResult dr = FlexibleMessageBox.Show(
-                                    "Are the contents of the two messages below the same?\r" +
-                                    "If yes, the message found in the mail chain will not be saved.\r\r" +
-                                    "-------------Message in Project Notes:-------------\r\r"
-                                    + contentRow.Text.Trim(trim) +
-                                    "\r\r\r------------------Message in Mail:-----------------\r\r"
-                                    + m, "Compare Messages", MessageBoxButtons.YesNoCancel
-                                    );
+                                DialogResult dr = CompareMessages(contentRow, sub, dt, propStart);
 
                                 switch (dr)
                                 {
@@ -405,9 +456,10 @@ namespace OEFCemail
                                 
                             }
                         }
-                        // If it found the thread of emails with the current subject header,
+
+                        // If the thread of emails with the current subject header is found,
                         // but the current row no longer has that subject header, break out of loop
-                        // This will return the current row
+                        // This will return the current row right before the first row with the subject header
                         else if (foundSubjectHeader)
                         {
                             row = i;
@@ -420,39 +472,17 @@ namespace OEFCemail
 
             return row;
         }
-
-        private async void SelectInDocument()
-        {
-            TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
-            await tcs.Task;
-            this.oWord.WindowBeforeRightClick += OWord_WindowBeforeRightClick;
-        }
-
-        private void OWord_WindowBeforeRightClick(Word.Selection Sel, ref bool Cancel)
-        {
-            selection = Sel;
-            FlexibleMessageBox.Show("SUP" + selection.Text);
-        }
-
-        private int CompareDates(string t, DateTime dt)
-        {
-            string pattern = "MM-dd-yy h:mmtt"; // Using the new note format
-            DateTime parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal);
-
-            return DateTime.Compare(parsedDate, dt);
-        }
-
         #endregion
 
-        #region Insert in Doc
-        private void InsertInDoc(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
+        #region Insert into Row
+        private void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
             int rowCount = oTbl.Rows.Count;
-            bool addToEnd = (row == -2) || (row == rowCount);
+            bool addToEnd = (row == 0) || (row == rowCount);
             
-            int start = mailRange.Start;
+            int startRangeBeforeCopy = mailRange.Start;
             int diff;
             int length = endRange - mailStartRange;
 
@@ -461,52 +491,53 @@ namespace OEFCemail
                 // int row represents the exact row to insert the message into
                 row = GetLastRow(oTbl, rowCount);
 
-                // row > rowCount only when the very last row has content in it, see GetLastRow
+                // row > rowCount only when the table has no empty rows (we need to add a new empty row)
                 if (row > rowCount)
                 {
-                    // Inserting rows isn't convenient. It will insert it before the very last row.
-                    // This is a work around. Add a row to the very end by copying the last row's contents into the row before it.
-                    InsertRow(oTbl, oTbl.Rows[rowCount]);
+                    /*
+                     * For some reason, the program can't simply append an empty row to the end of the table.
+                     * Instead, it will insert an empty row right before the last row.
+                     * This is a work around. Insert the empty row right before the last row,
+                     * then copy the last row into the new empty row.
+                     * This allows the last row to be overwritten.
+                     */
+                    AddNewRow(oTbl, oTbl.Rows[rowCount]);
 
-                    object oChar = Word.WdUnits.wdCharacter;
+                    object oChar = Word.WdUnits.wdCharacter; //represents a single character in Word.
 
-                    Word.Range copyFrom = oTbl.Rows[row].Cells[1].Range;
-                    //moving the end allows the program to only copy the contents of the cell, and prevents copying the end of the Cell
-                    copyFrom.MoveEnd(ref oChar, -1);
-                    oTbl.Rows[rowCount].Cells[1].Range.FormattedText = copyFrom.FormattedText;
+                    for(int i = 1; i < oTbl.Rows[rowCount].Cells.Count; i++)
+                    {
+                        Word.Range copyFrom = oTbl.Rows[row].Cells[i].Range;
 
-                    copyFrom = oTbl.Rows[row].Cells[2].Range;
-                    //moving the end allows the program to only copy the contents of the cell, and prevents copying the end of the Cell
-                    copyFrom.MoveEnd(ref oChar, -1);
-                    oTbl.Rows[rowCount].Cells[2].Range.FormattedText = copyFrom.FormattedText;
+                        //moving the end allows the program to only copy the contents of the cell, and prevents copying the end of the Cell
+                        copyFrom.MoveEnd(ref oChar, -1);
+
+                        oTbl.Rows[rowCount].Cells[1].Range.FormattedText = copyFrom.FormattedText;
+                    }
+
                 }
             }
             else
             {
-                // add a row somewhere in the middle
+                // add a row somewhere within the table
                 // increment row to the row we want to insert into
-                InsertRow(oTbl, oTbl.Rows[++row]);
+                AddNewRow(oTbl, oTbl.Rows[++row]);
             }
 
-            if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
+            // Adding a new row may cause the ranges for the mail messages to shift. Update as needed
+            if (startRangeBeforeCopy != mailRange.Start)
             {
-                diff = mailRange.Start - start;
+                diff = mailRange.Start - startRangeBeforeCopy;
                 mailStartRange += diff;
                 endRange += diff;
-                start = mailRange.Start;
+                startRangeBeforeCopy = mailRange.Start;
             }
 
             Word.Range tblRange = finalRange = oTbl.Cell(row, 1).Range;
 
-            // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
-            // Must be done locally! Cannot be moved to another function
-            // TODO look into why it must be done locally
-            Word.Range range = mailRange.Duplicate;
-            range.Start = mailStartRange; 
-            range.End = endRange;
+            Word.Range range = DuplicateMailRange(endRange);
 
-            // When the projects notes table have no empty rows, it can't copy from one range to the other. This shouldn't usually happen based on our template document.
-            // TODO: check for empty rows?
+            // Copy from the message's range into the table row's range.
             try
             {
                 tblRange.FormattedText = range.FormattedText;
@@ -517,8 +548,11 @@ namespace OEFCemail
                     "Error occurred at text: \"" + range.Text + "\"", exc);
             }
 
-            // The top-most message doesn't have any empty newlines before the start
-            // Insert two after the time to match the formatting of forwarded/replied messages.
+            /*
+             * The top-most message doesn't have any empty newlines before the start
+             * For consistent formatting across all messages,
+             * Insert two newlines after the time to match the formatting of forwarded/replied messages.
+             */
             string format = "\n";
             if (topMessage)
             {
@@ -535,11 +569,18 @@ namespace OEFCemail
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
-            if (start != mailRange.Start) // Update the section ranges if the mailRange ranges updated
+            // Copying the mail message into the row may cause the ranges for the mail messages to shift. Update as needed
+            if (startRangeBeforeCopy != mailRange.Start) 
             {
-                diff = mailRange.Start - start;
+                diff = mailRange.Start - startRangeBeforeCopy;
                 mailStartRange += diff + length;
             }
+        }
+
+        // Add a row after the given row reference
+        private void AddNewRow(Word.Table oTbl, object rowRef)
+        {
+            oTbl.Rows.Add(ref rowRef);
         }
 
         // Find a row at the end of the table to append the contents to
@@ -548,12 +589,11 @@ namespace OEFCemail
             int row;
 
             char[] trim = { '\r', '\a', '\n', '\v', ' ' };
-            // If the very last row has content in it, set the row to the next row after it
+            // If the very last row of the table has content in it
             if (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length > 0)
                 row = rowCount + 1;
-            else
+            else // the project note documents often has empty rows. Find the earliest empty row to insert into.
             {
-                // the project note documents often has empty rows. Find the earliest empty row to insert into.
                 while (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length == 0)
                 {
                     rowCount--;
@@ -565,11 +605,6 @@ namespace OEFCemail
             return row;
         }
 
-        // Add a row after the given row reference
-        private void InsertRow(Word.Table oTbl, object rowRef)
-        {
-            oTbl.Rows.Add(ref rowRef);
-        }
         #endregion
     }
 

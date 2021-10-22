@@ -31,20 +31,6 @@ namespace OEFCemail
         }
 
         #region Autofill
-        /* -- Used when retrieving the mail item wasn't automatic.
-        private Outlook.MailItem GetMailItem()
-        {
-            Outlook.Explorer explorer = Globals.ThisAddIn.Application.ActiveExplorer();
-            if (explorer != null)
-            {
-                Object obj = explorer.Selection[1];
-                if (obj is Outlook.MailItem)
-                    return (obj as Outlook.MailItem);
-            }
-            return null;
-        }
-        */
-
         public void SetMailItem(Outlook.MailItem mi)
         {
             mailItem = mi;
@@ -192,8 +178,8 @@ namespace OEFCemail
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
                             {
-                                emailSaver.AppendDoc(mailItem);
-                                emailSaver.Save();
+                                emailSaver.AppendToDoc(mailItem);
+                                emailSaver.SaveToDoc();
                             }
                             catch (Exception exc)
                             {
@@ -202,7 +188,7 @@ namespace OEFCemail
                                 ErrorLog log = new ErrorLog();
                                 log.WriteErrorLog(exc.ToString()); 
 
-                                emailSaver.SuspendProcess();
+                                emailSaver.TerminateProcess();
                             }
                         } 
                     }
@@ -236,8 +222,8 @@ namespace OEFCemail
             string dir = "G:\\"; // the directory of the Projects drive using Windows formatting
             string prj = this.textBoxProject.Text;
 
-            // Given a project #, go into the folder of the year that project is in (20 + the first 2 numbers of the given prj #
-            //  and find a folder with the same project #
+            // Given a project #, go into the folder of the year that project is in (20 + the first 2 numbers of the given prj #)
+            // and find a folder with the same project #
             if (this.radioButtonPrj.Checked && prj.Length > 1)
             {
                 string path = dir + "20" + prj.Substring(0, 2) + " Projects\\";

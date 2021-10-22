@@ -21,7 +21,7 @@ namespace OEFCemail
         {
             // Initialize the Side TaskPane
             myIntakeControl1 = new IntakeControl1();
-            intakeTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "My Task Pane");
+            intakeTaskPane = this.CustomTaskPanes.Add(myIntakeControl1, "OEFC Email Saver");
             // Create EventHandler to handle the pane's visibility
             intakeTaskPane.VisibleChanged += new EventHandler(IntakeTaskPane_VisibleChanged);
 

@@ -36,8 +36,9 @@ namespace OEFCemail
         private void InitializeComponent()
         {
             Microsoft.Office.Tools.Ribbon.RibbonGroup group1;
-            this.toggleButtonIntakeDisplay = this.Factory.CreateRibbonToggleButton();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(IntakeRibbon));
             this.Tab1 = this.Factory.CreateRibbonTab();
+            this.toggleButtonIntakeDisplay = this.Factory.CreateRibbonToggleButton();
             group1 = this.Factory.CreateRibbonGroup();
             group1.SuspendLayout();
             this.Tab1.SuspendLayout();
@@ -46,14 +47,8 @@ namespace OEFCemail
             // group1
             // 
             group1.Items.Add(this.toggleButtonIntakeDisplay);
-            group1.Label = "Show Intake Panel";
+            group1.Label = "Email Intake";
             group1.Name = "group1";
-            // 
-            // toggleButtonIntakeDisplay
-            // 
-            this.toggleButtonIntakeDisplay.Label = "Toggel Intake Panel";
-            this.toggleButtonIntakeDisplay.Name = "toggleButtonIntakeDisplay";
-            this.toggleButtonIntakeDisplay.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ToggleButtonIntakeDisplay_Click);
             // 
             // Tab1
             // 
@@ -61,6 +56,15 @@ namespace OEFCemail
             this.Tab1.Groups.Add(group1);
             this.Tab1.Label = "Email Intake";
             this.Tab1.Name = "Tab1";
+            // 
+            // toggleButtonIntakeDisplay
+            // 
+            this.toggleButtonIntakeDisplay.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.toggleButtonIntakeDisplay.Image = ((System.Drawing.Image)(resources.GetObject("toggleButtonIntakeDisplay.Image")));
+            this.toggleButtonIntakeDisplay.Label = "Show Intake Window";
+            this.toggleButtonIntakeDisplay.Name = "toggleButtonIntakeDisplay";
+            this.toggleButtonIntakeDisplay.ShowImage = true;
+            this.toggleButtonIntakeDisplay.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ToggleButtonIntakeDisplay_Click);
             // 
             // IntakeRibbon
             // 
