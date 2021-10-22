@@ -18,7 +18,7 @@ namespace OEFCemail
         private readonly string filename;
         private readonly string subject;
         private readonly string sender;
-        private readonly string receiver;
+        private readonly string recipient;
         private readonly string time;
         private string attachment;
 
@@ -34,13 +34,16 @@ namespace OEFCemail
         // missing reference
         private object missing = Type.Missing;
 
+        // common newline/whitespace characters to trim
+        private readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
+
         public EmailSaver(string filename, string subject, string sender, string receiver, string time, 
                             string attachment)
         {
             this.filename = filename;
             this.subject = subject;
             this.sender = sender;
-            this.receiver = receiver;
+            this.recipient = receiver;
             this.time = time;
             this.attachment = attachment;
 
@@ -126,16 +129,16 @@ namespace OEFCemail
 
             string sub = TrimSubject(subject);
             string send = sender;
-            string rec = receiver;
+            string rec = recipient;
             DateTime dt = ParseTime(time, true); // DateTime for the topmost message
 
             while (haveMoreMessages)
             {
                 // if there are any other messages in the email chain, get the properities of its range.
-                int[] nextMsgProperties = GetNextMsgProperties(lastSearchedParagraph);
-                int currentMsgEnd = nextMsgProperties[0]; // beginning range of the next message, also used as the end of the current message's range
-                int nextMsgLength = nextMsgProperties[1]; // length of the next messages prsegment's 
-                lastSearchedParagraph = nextMsgProperties[2]; // the last paragraph searched for in the mail's range.
+                // currentMsgEnd = beginning range of the next message, also used as the end of the current message's range
+                // nextMsgLength = length of the next messages segment's 
+                (int currentMsgEnd, int nextMsgLength, int paragraph) = GetNextMsgProperties(lastSearchedParagraph);
+                lastSearchedParagraph = paragraph; // the last paragraph searched for in the mail's range.
 
                 // if no other messages
                 if (currentMsgEnd == -1)
@@ -164,16 +167,22 @@ namespace OEFCemail
                 if (haveMoreMessages)
                 {
                     isTopMessage = false;
-                    string[] prop = ParseNextMsgInfo(nextMsgLength);
-                    send = prop[0];
-                    dt = ParseTime(prop[1], false);
-                    rec = prop[2];
+                    (string s1, string s2, string s3) = ParseNextMsgInfo(nextMsgLength);
+                    send = s1;
+                    dt = ParseTime(s2, false);
+                    rec = s3;
                     attachment = "";
                 }
             } // endwhile (hasMoreMessages)
 
             mailRange.Delete();
 
+            Quit(success);
+ 
+        }
+
+        private void Quit(bool success)
+        {
             /*
              * if the email saved correctly, scroll the view of the document to the row with the topmost message
              * Bring the document into view for the user.
@@ -190,7 +199,6 @@ namespace OEFCemail
             {
                 oWord.Quit();
             }
- 
         }
 
         #endregion
@@ -224,12 +232,12 @@ namespace OEFCemail
 
         /* 
          * Using Regex, find any messages in a chain, either forwarded or replied messages
-         * Return a 3-integer array with the properties of the next forwarded/replied message within the email chain
-         * index 0: beginning range of the next message, also used as the end of the current message's range
-         * index 1: length of the next message
-         * index 2: the last paragraph searched for in the mail's range.
+         * Return a 3-integer Tuple with the properties of the next forwarded/replied message within the email chain
+         * int1: beginning range of the next message, also used as the end of the current message's range
+         * int2: length of the next message
+         * int3: the last paragraph searched for in the mail's range.
          */
-        private int[] GetNextMsgProperties(int lastSearchedParagraph)
+        private (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
         {
             int msgStart = -1;
             int msgLength = -1;
@@ -268,8 +276,7 @@ namespace OEFCemail
                 }
             }
 
-            int[] propertyIndices = { msgStart, msgLength, lastSearchedParagraph};
-            return propertyIndices;
+            return (msgStart, msgLength, lastSearchedParagraph);
         }
 
         // parse the time based on the typical formats from Outlook emails
@@ -306,14 +313,16 @@ namespace OEFCemail
             return parsedDate;
         }
 
-        private string[] ParseNextMsgInfo(int length)
+        private (string, string, string) ParseNextMsgInfo(int length)
         {
             Word.Range range = DuplicateMailRange(mailStartRange + length);
             mailStartRange += length;
 
             string[] split = range.Text.Split('\v');
 
-            string[] prop = new string[3];
+            string sender;
+            string time;
+            string recipient;
 
             /*
              * Most emails use this format:
@@ -326,9 +335,9 @@ namespace OEFCemail
              */
             try
             {
-                prop[0] = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
-                prop[1] = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
-                prop[2] = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
+                sender = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
+                time = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
+                recipient = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
             } catch(Exception exc)
             {
                 throw new Exception("Error parsing messages in the chain.\r" +
@@ -338,9 +347,9 @@ namespace OEFCemail
 
             // if it includes CC'd recipients, add to the list of recipients
             if (split.Length == 5)
-                prop[2] += "; " + split[3].Remove(0, 4).TrimEnd(' '); // Remove "Cc: "
+                recipient += "; " + split[3].Remove(0, 4).TrimEnd(' '); // Remove "Cc: "
 
-            return prop;
+            return (sender, time, recipient);
         }
         #endregion
 
@@ -365,13 +374,12 @@ namespace OEFCemail
             Word.Range mail = DuplicateMailRange(propStart);
 
             string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mail.Text;
-            char[] trim = { '\n', '\r', '\a', ' ' };
 
             return FlexibleMessageBox.Show(
                 "Are the contents of the two messages below the same?\r" +
                 "If yes, the message found in the mail chain will not be saved.\r\r" +
                 "-------------Message in Project Notes:-------------\r\r"
-                + contentRow.Text.Trim(trim) +
+                + contentRow.Text.Trim(trimChars) +
                 "\r\r\r------------------Message in Mail:-----------------\r\r"
                 + m, "Compare Messages", MessageBoxButtons.YesNoCancel
             );
@@ -418,15 +426,13 @@ namespace OEFCemail
                         Word.Range subjectRng = contentRow.Sentences[1];
                         Word.Range timeRng = contentRow.Sentences[2];
 
-                        char[] trim = { '\n', '\r', '\a', ' ' };
-
-                        if (subjectRng.Text.TrimEnd(trim).CompareTo((string)findSub) == 0)
+                        if (subjectRng.Text.TrimEnd(trimChars).CompareTo((string)findSub) == 0)
                         {
                             foundSubjectHeader = true;
 
                             // the latest message (message received) will have seconds in the timestamp
                             // Need to remove the seconds for an equal comparison with other messages.
-                            int result = CompareDates(timeRng.Text.TrimEnd(trim), dt.AddSeconds(-dt.Second));
+                            int result = CompareDates(timeRng.Text.TrimEnd(trimChars), dt.AddSeconds(-dt.Second));
                             if (result < 0)
                             {   //The current row has an earlier timestamp than the message we want to intake
                                 //Treat the current row as our reference point for inserting the message.
@@ -540,6 +546,7 @@ namespace OEFCemail
             // Copy from the message's range into the table row's range.
             try
             {
+                //TODO: change text-font to that of our template?
                 tblRange.FormattedText = range.FormattedText;
             }
             catch (Exception exc)
@@ -553,6 +560,7 @@ namespace OEFCemail
              * For consistent formatting across all messages,
              * Insert two newlines after the time to match the formatting of forwarded/replied messages.
              */
+            // TODO check if necessary. Seems to mess up
             string format = "\n";
             if (topMessage)
             {
@@ -562,10 +570,8 @@ namespace OEFCemail
             tblRange.InsertBefore(
             "[Subject: " + sub + "]\n" + t + format);
 
-            char[] trim = { '\n', '\r', '\a', ' ' };
-
             if (!attachment.Equals(""))
-                tblRange.InsertAfter("\n(Attachment: " + attachment.Trim(trim) + ")"); //attachments
+                tblRange.InsertAfter("\n(Attachment: " + attachment.Trim(trimChars) + ")"); //attachments
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
@@ -588,13 +594,12 @@ namespace OEFCemail
         {
             int row;
 
-            char[] trim = { '\r', '\a', '\n', '\v', ' ' };
             // If the very last row of the table has content in it
-            if (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length > 0)
+            if (oTbl.Rows[rowCount].Range.Text.Trim(trimChars).Length > 0)
                 row = rowCount + 1;
             else // the project note documents often has empty rows. Find the earliest empty row to insert into.
             {
-                while (oTbl.Rows[rowCount].Range.Text.Trim(trim).Length == 0)
+                while (oTbl.Rows[rowCount].Range.Text.Trim(trimChars).Length == 0)
                 {
                     rowCount--;
                     if (rowCount == 0)
