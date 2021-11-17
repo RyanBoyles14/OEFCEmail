@@ -1,9 +1,9 @@
-﻿using System;
+﻿using JR.Utils.GUI.Forms;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
-using JR.Utils.GUI.Forms;
 
 namespace OEFCemail
 {
@@ -19,7 +19,7 @@ namespace OEFCemail
         private bool ProjectTextBoxActive = true; // for styling the project type radio buttons
 
         private Outlook.MailItem mailItem;
-        
+
         public IntakeControl1()
         {
             InitializeComponent();
@@ -89,7 +89,8 @@ namespace OEFCemail
         }
 
         // check if attachment is embedded. Returns true if it is
-        private bool IsEmbedded(Outlook.Attachment att) {
+        private bool IsEmbedded(Outlook.Attachment att)
+        {
             Outlook.PropertyAccessor pa = att.PropertyAccessor;
             int flag = pa.GetProperty(PR_ATTACH_FLAGS);
 
@@ -111,14 +112,17 @@ namespace OEFCemail
         private void RadioButtonPrj_CheckedChanged(object sender, EventArgs e)
         {
             ProjectTextBoxActive = !ProjectTextBoxActive;
-            if (ProjectTextBoxActive) {
+            if (ProjectTextBoxActive)
+            {
                 this.textBoxProject.BackColor = System.Drawing.Color.White;
                 this.textBoxProject.ReadOnly = false;
-            } else {
+            }
+            else
+            {
                 this.textBoxProject.BackColor = System.Drawing.Color.Gray;
                 this.textBoxProject.ReadOnly = true;
             }
-                
+
         }
 
         private void ButtonSaveEmail_Click(object sender, EventArgs e)
@@ -152,7 +156,7 @@ namespace OEFCemail
         #region Save Contents
         private void ButtonAppend_Click(object sender, EventArgs e)
         {
-            if(mailItem != null && !this.textBoxSubject.Text.Equals(""))
+            if (mailItem != null && !this.textBoxSubject.Text.Equals(""))
             {
                 string dir = GetProjectDirectory();
 
@@ -186,17 +190,17 @@ namespace OEFCemail
                                 FlexibleMessageBox.Show(exc.Message);
 
                                 ErrorLog log = new ErrorLog();
-                                log.WriteErrorLog(exc.ToString()); 
+                                log.WriteErrorLog(exc.ToString());
 
                                 emailSaver.TerminateProcess();
                             }
-                        } 
+                        }
                     }
                 }
             }
-            else if(mailItem == null)
+            else if (mailItem == null)
             {
-                FlexibleMessageBox.Show("Mail Item Not Selected.");   
+                FlexibleMessageBox.Show("Mail Item Not Selected.");
             }
             else
             {

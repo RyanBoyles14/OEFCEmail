@@ -1,12 +1,11 @@
-﻿using System;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Word = Microsoft.Office.Interop.Word;
-using Outlook = Microsoft.Office.Interop.Outlook;
-using JR.Utils.GUI.Forms;
+﻿using JR.Utils.GUI.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
+using Outlook = Microsoft.Office.Interop.Outlook;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace OEFCemail
 {
@@ -37,7 +36,7 @@ namespace OEFCemail
         // common newline/whitespace characters to trim
         private readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
 
-        public EmailSaver(string filename, string subject, string sender, string receiver, string time, 
+        public EmailSaver(string filename, string subject, string sender, string receiver, string time,
                             string attachment)
         {
             this.filename = filename;
@@ -106,17 +105,19 @@ namespace OEFCemail
         public void TerminateProcess()
         {
             // In the case an error occurs when trying to close Word
-            try {
+            try
+            {
                 object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
                 oWord.Quit(ref saveChanges);
-            } catch(Exception exc)
+            }
+            catch (Exception exc)
             {
                 FlexibleMessageBox.Show(exc + "\nError closing Word.");
 
                 ErrorLog log = new ErrorLog();
                 log.WriteErrorLog(exc.ToString());
             }
-            
+
         }
 
         public void SaveToDoc()
@@ -178,7 +179,7 @@ namespace OEFCemail
             mailRange.Delete();
 
             Quit(success);
- 
+
         }
 
         private void Quit(bool success)
@@ -204,7 +205,7 @@ namespace OEFCemail
         #endregion
 
         #region Trim/Parse
-        
+
         // Get the base subject header w/o Forward or Reply prefixes
         public string TrimSubject(string sub)
         {
@@ -215,7 +216,7 @@ namespace OEFCemail
             // using Linq: return the first string "s" in abbr where sub.ToUpper() starts with "s". If none exist, returns null.
             // https://stackoverflow.com/questions/12296089/how-to-check-if-a-string-contains-any-element-of-a-liststring
             String str = abbr.FirstOrDefault(s => sub.ToUpper().StartsWith(s));
-            
+
             // In some instances, the subject line can include multiple of these abbreviations
             while (str != null)
             {
@@ -298,12 +299,12 @@ namespace OEFCemail
             bool parsed = DateTime.TryParseExact(time, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out DateTime parsedDate);
 
             // Format from emails in the chain can sometimes include seconds, though it seems rare. Try parsing again if the first parse didn't work
-            if(!parsed && !isFirstMsg)
+            if (!parsed && !isFirstMsg)
             {
                 pattern = "dddd, MMMM d, yyyy h:mm:ss tt";
                 parsed = DateTime.TryParseExact(time, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal, out parsedDate);
             }
-            
+
             if (!parsed) // Throw an exception if parsing the second time still doesn't work
             {
                 throw new Exception("Error parsing message's sent time\r" +
@@ -338,7 +339,8 @@ namespace OEFCemail
                 sender = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
                 time = split[1].Remove(0, 6).TrimEnd(' '); // Remove "Sent: "
                 recipient = split[2].Remove(0, 4).TrimEnd(' '); // Remove "To: "
-            } catch(Exception exc)
+            }
+            catch (Exception exc)
             {
                 throw new Exception("Error parsing messages in the chain.\r" +
                     "Error found at text:\r" +
@@ -418,7 +420,7 @@ namespace OEFCemail
                 bool foundSubjectHeader = false;
                 for (; i > 0; i--)
                 {
-                    Word.Range contentRow = oTbl.Cell(i,1).Range;
+                    Word.Range contentRow = oTbl.Cell(i, 1).Range;
                     contentRow.Find.ClearFormatting();
 
                     if (contentRow.Sentences.Count >= 2)
@@ -439,7 +441,7 @@ namespace OEFCemail
                                 row = i;
                                 break;
                             }
-                            else if(result == 0)
+                            else if (result == 0)
                             {
                                 // the time stamps are the same. Since forwarded messages don't include seconds,
                                 // two separate messages can have the same time stamps.
@@ -458,8 +460,8 @@ namespace OEFCemail
 
                                 if (row == -1)
                                     // don't need to search through the notes any more. Assume the rest of the email thread is already intaken
-                                    break; 
-                                
+                                    break;
+
                             }
                         }
 
@@ -487,7 +489,7 @@ namespace OEFCemail
 
             int rowCount = oTbl.Rows.Count;
             bool addToEnd = (row == 0) || (row == rowCount);
-            
+
             int startRangeBeforeCopy = mailRange.Start;
             int diff;
             int length = endRange - mailStartRange;
@@ -511,7 +513,7 @@ namespace OEFCemail
 
                     object oChar = Word.WdUnits.wdCharacter; //represents a single character in Word.
 
-                    for(int i = 1; i < oTbl.Rows[rowCount].Cells.Count; i++)
+                    for (int i = 1; i < oTbl.Rows[rowCount].Cells.Count; i++)
                     {
                         Word.Range copyFrom = oTbl.Rows[row].Cells[i].Range;
 
@@ -576,7 +578,7 @@ namespace OEFCemail
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
             // Copying the mail message into the row may cause the ranges for the mail messages to shift. Update as needed
-            if (startRangeBeforeCopy != mailRange.Start) 
+            if (startRangeBeforeCopy != mailRange.Start)
             {
                 diff = mailRange.Start - startRangeBeforeCopy;
                 mailStartRange += diff + length;
