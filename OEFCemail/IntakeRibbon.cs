@@ -3,6 +3,7 @@ using Microsoft.Office.Tools.Ribbon;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
@@ -170,7 +171,7 @@ namespace OEFCemail
         }
 
 
-        private void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
+        private async void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
         {
             if (mailItem != null && !mailItem.Subject.Equals(""))
             {
@@ -198,8 +199,7 @@ namespace OEFCemail
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
                             {
-                                emailSaver.AppendToDoc(mailItem);
-                                emailSaver.SaveToDoc();
+                                await Task.Run(() => emailSaver.SaveAsync(mailItem));
                             }
                             catch (Exception exc)
                             {

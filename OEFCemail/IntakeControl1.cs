@@ -182,8 +182,8 @@ namespace OEFCemail
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
                             {
-                                emailSaver.AppendToDoc(mailItem);
-                                emailSaver.SaveToDoc();
+                                emailSaver.AppendToDocAsync(mailItem);
+                                emailSaver.SaveToDocAsync();
                             }
                             catch (Exception exc)
                             {

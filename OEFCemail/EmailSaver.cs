@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using Word = Microsoft.Office.Interop.Word;
@@ -78,14 +79,19 @@ namespace OEFCemail
         }
 
         #region Add To Document
+        public async Task SaveAsync(Outlook.MailItem item)
+        {
+            AppendToDoc(item);
+            SaveToDoc();
 
-        /*
-         * Append all the formatted text to the end of the project notes document
-         * Requires saving the Outlook email as a temporary Document in order to preserve the formatting
-         * It needs to be a separate document in order to insert the temp document into the Notes document
-         * Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
-         * After inserting the file, delete the temporary file
-         */
+            await Task.Delay(0);
+        }
+        
+        // Append all the formatted text to the end of the project notes document
+        // Requires saving the Outlook email as a temporary Document in order to preserve the formatting
+        // It needs to be a separate document in order to insert the temp document into the Notes document
+        // Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
+        // After inserting the file, delete the temporary file
         public void AppendToDoc(Outlook.MailItem item)
         {
             object path = System.IO.Path.GetDirectoryName(filename) + "\\(temporary).doc";
@@ -99,6 +105,7 @@ namespace OEFCemail
             mailRange.InsertFile((string)path, ref missing, ref missing, ref missing, ref missing);
 
             System.IO.File.Delete((string)path);
+
         }
 
         // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
@@ -179,7 +186,6 @@ namespace OEFCemail
             mailRange.Delete();
 
             Quit(success);
-
         }
 
         private void Quit(bool success)
