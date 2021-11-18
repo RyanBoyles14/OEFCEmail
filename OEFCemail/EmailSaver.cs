@@ -1,10 +1,10 @@
-﻿using JR.Utils.GUI.Forms;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using JR.Utils.GUI.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using Word = Microsoft.Office.Interop.Word;
 
@@ -12,15 +12,15 @@ namespace OEFCemail
 {
     class EmailSaver
     {
-        public bool initialized = true;
+        public bool Initialized = true;
 
         // Mail properties
-        private readonly string filename;
-        private readonly string subject;
-        private readonly string sender;
-        private readonly string recipient;
-        private readonly string time;
-        private string attachment;
+        private readonly string _filename;
+        private readonly string _subject;
+        private readonly string _sender;
+        private readonly string _recipient;
+        private readonly string _time;
+        private string _attachment;
 
         // Document objects
         private readonly Word.Application oWord;
@@ -33,19 +33,19 @@ namespace OEFCemail
 
         // missing reference
         private object missing = Type.Missing;
-
+        
         // common newline/whitespace characters to trim
         private readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
 
         public EmailSaver(string filename, string subject, string sender, string receiver, string time,
                             string attachment)
         {
-            this.filename = filename;
-            this.subject = subject;
-            this.sender = sender;
-            this.recipient = receiver;
-            this.time = time;
-            this.attachment = attachment;
+            _filename = filename;
+            _subject = subject;
+            _sender = sender;
+            _recipient = receiver;
+            _time = time;
+            _attachment = attachment;
 
             oWord = new Word.Application();
 
@@ -58,12 +58,12 @@ namespace OEFCemail
                 if (oDoc == null)
                 {
                     FlexibleMessageBox.Show("Error Opening Word Document. Terminating Processing...");
-                    initialized = false;
+                    Initialized = false;
                 }
                 else if (oDoc.ReadOnly)
                 {
                     FlexibleMessageBox.Show("Word Document is Read-Only. Terminating Processing...");
-                    initialized = false;
+                    Initialized = false;
                 }
             }
             catch (Exception exc)
@@ -73,7 +73,7 @@ namespace OEFCemail
                 FlexibleMessageBox.Show("Error Opening Word Doc. Terminating Processing...");
                 ErrorLog log = new ErrorLog();
                 log.WriteErrorLog(exc.ToString());
-                initialized = false;
+                Initialized = false;
             }
 
         }
@@ -94,7 +94,7 @@ namespace OEFCemail
         // After inserting the file, delete the temporary file
         public void AppendToDoc(Outlook.MailItem item)
         {
-            object path = System.IO.Path.GetDirectoryName(filename) + "\\(temporary).doc";
+            object path = System.IO.Path.GetDirectoryName(_filename) + "\\(temporary).doc";
             object format = Word.WdSaveFormat.wdFormatDocument;
             Word.Document mailInspector = item.GetInspector.WordEditor as Word.Document;
 
@@ -135,10 +135,10 @@ namespace OEFCemail
             int lastSearchedParagraph = 0;
             int row = 0;
 
-            string sub = TrimSubject(subject);
-            string send = sender;
-            string rec = recipient;
-            DateTime dt = ParseTime(time, true); // DateTime for the topmost message
+            string sub = TrimSubject(_subject);
+            string send = _sender;
+            string rec = _recipient;
+            DateTime dt = ParseTime(_time, true); // DateTime for the topmost message
 
             while (haveMoreMessages)
             {
@@ -179,7 +179,7 @@ namespace OEFCemail
                     send = s1;
                     dt = ParseTime(s2, false);
                     rec = s3;
-                    attachment = "";
+                    _attachment = "";
                 }
             } // endwhile (hasMoreMessages)
 
@@ -190,10 +190,9 @@ namespace OEFCemail
 
         private void Quit(bool success)
         {
-            /*
-             * if the email saved correctly, scroll the view of the document to the row with the topmost message
-             * Bring the document into view for the user.
-             */
+            
+             // if the email saved correctly, scroll the view of the document to the row with the topmost message
+             // Bring the document into view for the user.
             if (success)
             {
                 oDoc.ActiveWindow.ScrollIntoView(finalRange, false);
@@ -213,7 +212,7 @@ namespace OEFCemail
         #region Trim/Parse
 
         // Get the base subject header w/o Forward or Reply prefixes
-        public string TrimSubject(string sub)
+        private static string TrimSubject(string sub)
         {
             // Typical abbreviations that are prepended to subject lines are: "FW", "Fwd", or "RE". Search for any variation of those.
             // Configured in case other prefixes need to be added.
@@ -237,26 +236,25 @@ namespace OEFCemail
             return sub;
         }
 
-        /* 
-         * Using Regex, find any messages in a chain, either forwarded or replied messages
-         * Return a 3-integer Tuple with the properties of the next forwarded/replied message within the email chain
-         * int1: beginning range of the next message, also used as the end of the current message's range
-         * int2: length of the next message
-         * int3: the last paragraph searched for in the mail's range.
-         */
+        
+        // Using Regex, find any messages in a chain, either forwarded or replied messages
+        // Return a 3-integer Tuple with the properties of the next forwarded/replied message within the email chain
+        // int1: beginning range of the next message, also used as the end of the current message's range
+        // int2: length of the next message
+        // int3: the last paragraph searched for in the mail's range.
+         
         private (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
         {
             int msgStart = -1;
             int msgLength = -1;
 
-            /*
-             * Using this format to find other messages in a chain
-             * From: X
-             * Sent: X
-             * To: X
-             * Cc: X - this is optional
-             * Subject: X
-             */
+
+            // Using this format to find other messages in a chain
+            // From: X
+            // Sent: X
+            // To: X
+            // Cc: X - this is optional
+            // Subject: X
             string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
                 @"(Sent: [^\n\r\v]+[\n\r\v])" +
                 @"(To: [^\n\r\v]+[\n\r\v])?" +
@@ -265,11 +263,9 @@ namespace OEFCemail
 
             Word.Paragraphs paragraphs = mailRange.Paragraphs;
 
-            /*
-             * The message property info should all be within the same paragraph.
-             * Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
-             * Adding 1 to lastSearchedParagraph, since Word object indices are 1-based, not 0-based
-             */
+            // The message property info should all be within the same paragraph.
+            // Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
+            // Adding 1 to lastSearchedParagraph, since Word object indices are 1-based, not 0-based
             for (int i = lastSearchedParagraph + 1; i <= paragraphs.Count; i++)
             {
                 Word.Paragraph p = paragraphs[i];
@@ -331,15 +327,13 @@ namespace OEFCemail
             string time;
             string recipient;
 
-            /*
-             * Most emails use this format:
-             * 
-             * From: X\v
-             * Sent: X\v
-             * To: X\v
-             * Cc: X\v - this is optional
-             * Subject: X\r\r
-             */
+
+            //Most emails use this format:
+            //From: X\v
+            //Sent: X\v
+            //To: X\v
+            //Cc: X\v - this is optional
+            // Subject: X\r\r
             try
             {
                 sender = split[0].Remove(0, 6).TrimEnd(' '); // Remove "From: "
@@ -508,13 +502,11 @@ namespace OEFCemail
                 // row > rowCount only when the table has no empty rows (we need to add a new empty row)
                 if (row > rowCount)
                 {
-                    /*
-                     * For some reason, the program can't simply append an empty row to the end of the table.
-                     * Instead, it will insert an empty row right before the last row.
-                     * This is a work around. Insert the empty row right before the last row,
-                     * then copy the last row into the new empty row.
-                     * This allows the last row to be overwritten.
-                     */
+                     // For some reason, the program can't simply append an empty row to the end of the table.
+                     // Instead, it will insert an empty row right before the last row.
+                     // This is a work around. Insert the empty row right before the last row,
+                     // then copy the last row into the new empty row.
+                     // This allows the last row to be overwritten.
                     AddNewRow(oTbl, oTbl.Rows[rowCount]);
 
                     object oChar = Word.WdUnits.wdCharacter; //represents a single character in Word.
@@ -563,11 +555,9 @@ namespace OEFCemail
                     "Error occurred at text: \"" + range.Text + "\"", exc);
             }
 
-            /*
-             * The top-most message doesn't have any empty newlines before the start
-             * For consistent formatting across all messages,
-             * Insert two newlines after the time to match the formatting of forwarded/replied messages.
-             */
+            // The top-most message doesn't have any empty newlines before the start
+            // For consistent formatting across all messages,
+            // Insert two newlines after the time to match the formatting of forwarded/replied messages.
             // TODO check if necessary. Seems to mess up
             string format = "\n";
             if (topMessage)
@@ -578,8 +568,8 @@ namespace OEFCemail
             tblRange.InsertBefore(
             "[Subject: " + sub + "]\n" + t + format);
 
-            if (!attachment.Equals(""))
-                tblRange.InsertAfter("\n(Attachment: " + attachment.Trim(trimChars) + ")"); //attachments
+            if (!_attachment.Equals(""))
+                tblRange.InsertAfter("\n(Attachment: " + _attachment.Trim(trimChars) + ")"); //attachments
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 

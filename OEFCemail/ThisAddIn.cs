@@ -12,8 +12,9 @@ namespace OEFCemail
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             // Initialize the ActiveExplorer, which is used to for selecting mail items
-            app = this.Application;
+            app = Application;
             activeExplorer = app.ActiveExplorer();
+
             // create an event handler for if the user selects a new item
             activeExplorer.SelectionChange += new Outlook.ExplorerEvents_10_SelectionChangeEventHandler(Item_SelectionChange);
         }
@@ -21,7 +22,7 @@ namespace OEFCemail
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             // Note: Outlook no longer raises this event. If you have code that 
-            //    must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785
+            // must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785
         }
 
         #region VSTO generated code

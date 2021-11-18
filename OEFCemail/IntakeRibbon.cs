@@ -1,10 +1,10 @@
-﻿using JR.Utils.GUI.Forms;
-using Microsoft.Office.Tools.Ribbon;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using JR.Utils.GUI.Forms;
+using Microsoft.Office.Tools.Ribbon;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace OEFCemail
@@ -15,9 +15,9 @@ namespace OEFCemail
         // property identifiers, used for attachment property checking
         // Reference for all identifies: https://interoperability.blob.core.windows.net/files/MS-OXPROPS/%5bMS-OXPROPS%5d.pdf
         // See 1.3.4.1 for how to use
-        const string PR_ATTACH_FLAGS = "http://schemas.microsoft.com/mapi/proptag/0x37140003";// See 2.594
-        const string PR_SMTP_ADDRESS = "http://schemas.microsoft.com/mapi/proptag/0x39FE001F";// See 2.1020
-        const string SenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
+        private const string PidTagAttachFlags = "http://schemas.microsoft.com/mapi/proptag/0x37140003";// See 2.594
+        private const string PidTagSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x39FE001F";// See 2.1020
+        private const string PidTagSenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
 
         private Outlook.MailItem mailItem;
 
@@ -43,7 +43,7 @@ namespace OEFCemail
 
                 // https://docs.microsoft.com/en-us/office/client-developer/outlook/pia/how-to-get-the-e-mail-address-of-a-recipient
                 // alternative to r.Address, more reliable to getting in-office email addresses.
-                string smtpAddress = r.PropertyAccessor.GetProperty(PR_SMTP_ADDRESS).ToString();
+                string smtpAddress = r.PropertyAccessor.GetProperty(PidTagSmtpAddress).ToString();
                 s += " (" + smtpAddress + ")";
                 if (i < recip.Count)
                     s += "; ";
@@ -71,10 +71,10 @@ namespace OEFCemail
         }
 
         // check if attachment is embedded. Returns true if it is
-        private bool IsEmbedded(Outlook.Attachment att)
+        private static bool IsEmbedded(Outlook.Attachment att)
         {
             Outlook.PropertyAccessor pa = att.PropertyAccessor;
-            int flag = pa.GetProperty(PR_ATTACH_FLAGS);
+            int flag = pa.GetProperty(PidTagAttachFlags);
 
             // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
             // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
@@ -89,8 +89,8 @@ namespace OEFCemail
         private String GetProjectDirectory()
         {
             string dir = "G:\\"; // the directory of the Projects drive using Windows formatting
-            string folder = this.folderLocationDropDown.SelectedItem.ToString();
-            string prj = this.projectEditBox.Text;
+            string folder = folderLocationDropDown.SelectedItem.ToString();
+            string prj = projectEditBox.Text;
             string path = dir;
             string s;
 
@@ -126,7 +126,7 @@ namespace OEFCemail
             return dir;
         }
 
-        private string SearchDirectories(string path, string prj)
+        private static string SearchDirectories(string path, string prj)
         {
             try
             {
@@ -190,11 +190,11 @@ namespace OEFCemail
 
                     if (openFileDialog.FileName != "")
                     {
-                        string send = " (" + mailItem.PropertyAccessor.GetProperty(SenderSmtpAddress).ToString() + ")";
+                        string send = " (" + mailItem.PropertyAccessor.GetProperty(PidTagSenderSmtpAddress).ToString() + ")";
                         EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, mailItem.Subject,
                             send, GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
 
-                        if (emailSaver.initialized)
+                        if (emailSaver.Initialized)
                         {
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
