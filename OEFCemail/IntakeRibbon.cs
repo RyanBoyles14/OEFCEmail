@@ -31,6 +31,11 @@ namespace OEFCemail
             mailItem = mi;
         }
 
+        private string GetSender()
+        {
+            return mailItem.SenderName.ToString() + " (" + mailItem.PropertyAccessor.GetProperty(PidTagSenderSmtpAddress).ToString() + ")";
+        }
+
         private string GetRecipients()
         {
             string s = "";
@@ -191,9 +196,8 @@ namespace OEFCemail
 
                     if (openFileDialog.FileName != "")
                     {
-                        string send = " (" + mailItem.PropertyAccessor.GetProperty(PidTagSenderSmtpAddress).ToString() + ")";
                         EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, mailItem.Subject,
-                            send, GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
+                            GetSender(), GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
 
                         if (emailSaver.Initialized)
                         {
