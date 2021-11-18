@@ -61,10 +61,11 @@ namespace OEFCemail
             {
                 Outlook.Attachment att = attach[i];
                 if (!IsEmbedded(att))
-                    s += att.FileName + ", ";
-
-                if (i < attach.Count)
-                    s += "; ";
+                {
+                    s += att.FileName;
+                    if (i < attach.Count)
+                        s += ", ";
+                }  
             }
 
             return s;

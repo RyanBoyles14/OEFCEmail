@@ -15,27 +15,27 @@ namespace OEFCemail
         public bool Initialized = true;
 
         // Mail properties
-        private readonly string _filename;
-        private readonly string _subject;
-        private readonly string _sender;
-        private readonly string _recipient;
-        private readonly string _time;
-        private string _attachment;
+        private static string _filename;
+        private static string _subject;
+        private static string _sender;
+        private static string _recipient;
+        private static string _time;
+        private static string _attachment;
 
         // Document objects
-        private readonly Word.Application oWord;
-        private readonly Word.Document oDoc;
+        private static Word.Application oWord;
+        private static Word.Document oDoc;
 
         // Ranges
-        private int mailStartRange;
-        private Word.Range mailRange;
-        private Word.Range finalRange;
+        private static int mailStartRange;
+        private static Word.Range mailRange;
+        private static Word.Range finalRange;
 
         // missing reference
-        private object missing = Type.Missing;
+        private static object missing = Type.Missing;
         
         // common newline/whitespace characters to trim
-        private readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
+        private static readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
 
         public EmailSaver(string filename, string subject, string sender, string receiver, string time,
                             string attachment)
@@ -92,7 +92,7 @@ namespace OEFCemail
         // It needs to be a separate document in order to insert the temp document into the Notes document
         // Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
         // After inserting the file, delete the temporary file
-        public void AppendToDoc(Outlook.MailItem item)
+        public static void AppendToDoc(Outlook.MailItem item)
         {
             object path = System.IO.Path.GetDirectoryName(_filename) + "\\(temporary).doc";
             object format = Word.WdSaveFormat.wdFormatDocument;
@@ -127,7 +127,7 @@ namespace OEFCemail
 
         }
 
-        public void SaveToDoc()
+        public static void SaveToDoc()
         {
             bool success = true;
             bool haveMoreMessages = true;
@@ -188,7 +188,7 @@ namespace OEFCemail
             Quit(success);
         }
 
-        private void Quit(bool success)
+        private static void Quit(bool success)
         {
             
              // if the email saved correctly, scroll the view of the document to the row with the topmost message
@@ -243,7 +243,7 @@ namespace OEFCemail
         // int2: length of the next message
         // int3: the last paragraph searched for in the mail's range.
          
-        private (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
+        private static (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
         {
             int msgStart = -1;
             int msgLength = -1;
@@ -284,7 +284,7 @@ namespace OEFCemail
 
         // parse the time based on the typical formats from Outlook emails
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
-        private DateTime ParseTime(string time, bool isFirstMsg)
+        private static DateTime ParseTime(string time, bool isFirstMsg)
         {
             string pattern;
             if (isFirstMsg)
@@ -316,7 +316,7 @@ namespace OEFCemail
             return parsedDate;
         }
 
-        private (string, string, string) ParseNextMsgInfo(int length)
+        private static (string, string, string) ParseNextMsgInfo(int length)
         {
             Word.Range range = DuplicateMailRange(mailStartRange + length);
             mailStartRange += length;
@@ -358,7 +358,7 @@ namespace OEFCemail
         #region Duplicate Range
 
         // Return a duplicate of the mailRange with the start and end ranges set to the global mailStartRange and a given end.
-        private Word.Range DuplicateMailRange(int end)
+        private static Word.Range DuplicateMailRange(int end)
         {
             Word.Range mail = mailRange.Duplicate;
             mail.Start = mailStartRange;
@@ -371,7 +371,7 @@ namespace OEFCemail
 
         #region Compare
 
-        private DialogResult CompareMessages(Word.Range contentRow, String sub, DateTime dt, int propStart)
+        private static DialogResult CompareMessages(Word.Range contentRow, String sub, DateTime dt, int propStart)
         {
             Word.Range mail = DuplicateMailRange(propStart);
 
@@ -387,7 +387,7 @@ namespace OEFCemail
             );
         }
 
-        private int CompareDates(string t, DateTime dt)
+        private static int CompareDates(string t, DateTime dt)
         {
             string pattern = "MM-dd-yy h:mmtt"; // Using the new note format
             DateTime parsedDate = DateTime.ParseExact(t, pattern, null, System.Globalization.DateTimeStyles.AssumeLocal);
@@ -398,7 +398,7 @@ namespace OEFCemail
         #endregion
 
         #region Find Rows 
-        private int FindRow(string sub, DateTime dt, int propStart, int row)
+        private static int FindRow(string sub, DateTime dt, int propStart, int row)
         {
 
             Word.Table oTbl = oDoc.Tables[1];
@@ -483,7 +483,7 @@ namespace OEFCemail
         #endregion
 
         #region Insert into Row
-        private void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
+        private static void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
@@ -582,13 +582,13 @@ namespace OEFCemail
         }
 
         // Add a row after the given row reference
-        private void AddNewRow(Word.Table oTbl, object rowRef)
+        private static void AddNewRow(Word.Table oTbl, object rowRef)
         {
             oTbl.Rows.Add(ref rowRef);
         }
 
         // Find a row at the end of the table to append the contents to
-        private int GetLastRow(Word.Table oTbl, int rowCount)
+        private static int GetLastRow(Word.Table oTbl, int rowCount)
         {
             int row;
 
