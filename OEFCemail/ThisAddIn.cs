@@ -46,9 +46,20 @@ namespace OEFCemail
             if (activeExplorer != null && activeExplorer.Selection.Count > 0)
             {
                 Object obj = activeExplorer.Selection[1];
+
+                IntakeRibbon ir = Globals.Ribbons.IntakeRibbon;
+
                 if (obj is Outlook.MailItem item)
                 {
-                    Globals.Ribbons.IntakeRibbon.SetMailItem(item);
+                    ir.SetMailItem(item);
+
+                    if (item.Subject == null)
+                        ir.emailLabel.Label = "Subject: (no subject)";
+                    else 
+                        ir.emailLabel.Label = "Subject: " + item.Subject;
+
+                    ir.senderLabel.Label = "Sender: " + item.Sender.Name;
+                    ir.dateLabel.Label = "Date: " + item.ReceivedTime.ToString();
                 }
             }
         }

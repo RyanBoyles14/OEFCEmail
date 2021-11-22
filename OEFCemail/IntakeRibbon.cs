@@ -179,8 +179,14 @@ namespace OEFCemail
 
         private async void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
         {
-            if (mailItem != null && !mailItem.Subject.Equals(""))
+            if (mailItem != null)
             {
+                string sub;
+                if (mailItem.Subject == null)
+                    sub = "(no subject)";
+                else
+                    sub = mailItem.Subject;
+
                 string dir = GetProjectDirectory();
 
                 if (mailItem != null)
@@ -196,7 +202,7 @@ namespace OEFCemail
 
                     if (openFileDialog.FileName != "")
                     {
-                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, mailItem.Subject,
+                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub,
                             GetSender(), GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
 
                         if (emailSaver.Initialized)

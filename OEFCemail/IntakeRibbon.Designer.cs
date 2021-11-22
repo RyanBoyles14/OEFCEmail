@@ -39,34 +39,40 @@ namespace OEFCemail
             Microsoft.Office.Tools.Ribbon.RibbonDropDownItem ribbonDropDownItemImpl2 = this.Factory.CreateRibbonDropDownItem();
             Microsoft.Office.Tools.Ribbon.RibbonDropDownItem ribbonDropDownItemImpl3 = this.Factory.CreateRibbonDropDownItem();
             this.Tab1 = this.Factory.CreateRibbonTab();
-            this.group4 = this.Factory.CreateRibbonGroup();
+            this.group1 = this.Factory.CreateRibbonGroup();
             this.folderLocationDropDown = this.Factory.CreateRibbonDropDown();
             this.projectEditBox = this.Factory.CreateRibbonEditBox();
             this.separator1 = this.Factory.CreateRibbonSeparator();
-            this.saveEmailToFileButton = this.Factory.CreateRibbonButton();
             this.separator2 = this.Factory.CreateRibbonSeparator();
+            this.saveEmailToFileButton = this.Factory.CreateRibbonButton();
             this.saveEmailToNotesButton = this.Factory.CreateRibbonButton();
+            this.emailLabel = this.Factory.CreateRibbonLabel();
+            this.group2 = this.Factory.CreateRibbonGroup();
+            this.dateLabel = this.Factory.CreateRibbonLabel();
+            this.senderLabel = this.Factory.CreateRibbonLabel();
             this.Tab1.SuspendLayout();
-            this.group4.SuspendLayout();
+            this.group1.SuspendLayout();
+            this.group2.SuspendLayout();
             this.SuspendLayout();
             // 
             // Tab1
             // 
             this.Tab1.ControlId.ControlIdType = Microsoft.Office.Tools.Ribbon.RibbonControlIdType.Office;
-            this.Tab1.Groups.Add(this.group4);
+            this.Tab1.Groups.Add(this.group1);
+            this.Tab1.Groups.Add(this.group2);
             this.Tab1.Label = "Email Intake";
             this.Tab1.Name = "Tab1";
             // 
-            // group4
+            // group1
             // 
-            this.group4.Items.Add(this.folderLocationDropDown);
-            this.group4.Items.Add(this.projectEditBox);
-            this.group4.Items.Add(this.separator1);
-            this.group4.Items.Add(this.saveEmailToFileButton);
-            this.group4.Items.Add(this.separator2);
-            this.group4.Items.Add(this.saveEmailToNotesButton);
-            this.group4.Label = "Save Email";
-            this.group4.Name = "group4";
+            this.group1.Items.Add(this.folderLocationDropDown);
+            this.group1.Items.Add(this.projectEditBox);
+            this.group1.Items.Add(this.separator1);
+            this.group1.Items.Add(this.saveEmailToFileButton);
+            this.group1.Items.Add(this.separator2);
+            this.group1.Items.Add(this.saveEmailToNotesButton);
+            this.group1.Label = "Save Email";
+            this.group1.Name = "group1";
             // 
             // folderLocationDropDown
             // 
@@ -89,6 +95,10 @@ namespace OEFCemail
             // 
             this.separator1.Name = "separator1";
             // 
+            // separator2
+            // 
+            this.separator2.Name = "separator2";
+            // 
             // saveEmailToFileButton
             // 
             this.saveEmailToFileButton.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
@@ -97,10 +107,6 @@ namespace OEFCemail
             this.saveEmailToFileButton.Name = "saveEmailToFileButton";
             this.saveEmailToFileButton.ShowImage = true;
             this.saveEmailToFileButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.SaveEmailToFileButton_Click);
-            // 
-            // separator2
-            // 
-            this.separator2.Name = "separator2";
             // 
             // saveEmailToNotesButton
             // 
@@ -111,6 +117,29 @@ namespace OEFCemail
             this.saveEmailToNotesButton.ShowImage = true;
             this.saveEmailToNotesButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.SaveEmailToNotesButton_Click);
             // 
+            // emailLabel
+            // 
+            this.emailLabel.Label = "Subject: ";
+            this.emailLabel.Name = "emailLabel";
+            // 
+            // group2
+            // 
+            this.group2.Items.Add(this.emailLabel);
+            this.group2.Items.Add(this.senderLabel);
+            this.group2.Items.Add(this.dateLabel);
+            this.group2.Label = "SelectedEmail";
+            this.group2.Name = "group2";
+            // 
+            // dateLabel
+            // 
+            this.dateLabel.Label = "Date: ";
+            this.dateLabel.Name = "dateLabel";
+            // 
+            // senderLabel
+            // 
+            this.senderLabel.Label = "Sender: ";
+            this.senderLabel.Name = "senderLabel";
+            // 
             // IntakeRibbon
             // 
             this.Name = "IntakeRibbon";
@@ -119,8 +148,10 @@ namespace OEFCemail
             this.Load += new Microsoft.Office.Tools.Ribbon.RibbonUIEventHandler(this.IntakeRibbon_Load);
             this.Tab1.ResumeLayout(false);
             this.Tab1.PerformLayout();
-            this.group4.ResumeLayout(false);
-            this.group4.PerformLayout();
+            this.group1.ResumeLayout(false);
+            this.group1.PerformLayout();
+            this.group2.ResumeLayout(false);
+            this.group2.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -130,11 +161,15 @@ namespace OEFCemail
         internal Microsoft.Office.Tools.Ribbon.RibbonTab Tab1;
         internal Microsoft.Office.Tools.Ribbon.RibbonDropDown folderLocationDropDown;
         internal Microsoft.Office.Tools.Ribbon.RibbonEditBox projectEditBox;
-        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group1;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton saveEmailToFileButton;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton saveEmailToNotesButton;
         internal Microsoft.Office.Tools.Ribbon.RibbonSeparator separator1;
         internal Microsoft.Office.Tools.Ribbon.RibbonSeparator separator2;
+        internal Microsoft.Office.Tools.Ribbon.RibbonLabel emailLabel;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group2;
+        internal Microsoft.Office.Tools.Ribbon.RibbonLabel senderLabel;
+        internal Microsoft.Office.Tools.Ribbon.RibbonLabel dateLabel;
     }
 
     partial class ThisRibbonCollection
