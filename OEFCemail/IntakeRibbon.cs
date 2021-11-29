@@ -76,7 +76,7 @@ namespace OEFCemail
             return s;
         }
 
-        // check if attachment is embedded. Returns true if it is
+        // check if attachment is embedded
         private static bool IsEmbedded(Outlook.Attachment att)
         {
             Outlook.PropertyAccessor pa = att.PropertyAccessor;
@@ -84,70 +84,12 @@ namespace OEFCemail
 
             // https://stackoverflow.com/questions/3880346/dont-save-embed-image-that-contain-into-attachements-like-signature-image
             // https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmsg/af8700bc-9d2a-47e4-b107-5ebf4467a418
-            // flag of 4 -> the attachment is embedded in the message object's HTML body
-            // Type = 6 -> Rich Text Format. This ensures not including embedded images, while still including attachments.
+            // flag = 4 -> the attachment is embedded in the message object's HTML body
+            // Type = 6 -> Rich Text Format. This ensures not including embedded images with the attachments.
             if (flag != 4 && (int)att.Type != 6)
                 return false;
 
             return true;
-        }
-
-        private String GetProjectDirectory()
-        {
-            string dir = "G:\\"; // the directory of the Projects drive using Windows formatting
-            string folder = folderLocationDropDown.SelectedItem.ToString();
-            string prj = projectEditBox.Text;
-            string path = dir;
-            string s;
-
-            switch (folder)
-            {
-                case "Projects":
-                    if (prj.Length > 1)
-                        // Given a project #, go into the folder of the year
-                        // that project is in (20 + the first 2 numbers of the given prj #)
-                        // and find a folder with the same project #
-                        path += "20" + prj.Substring(0, 2) + " Projects\\";
-
-                    break;
-                case "At Risk":
-                    path += "At Risk\\";
-                    break;
-                case "Overhead":
-                    path += "OverHead Projects (OHPs)\\";
-                    break;
-            }
-
-            if (prj.Length > 1)
-            {
-                s = SearchDirectories(path, prj);
-                if (s.Equals(""))
-                    dir = path;
-                else
-                    dir = s;
-            }
-            else
-                dir = path;
-
-            return dir;
-        }
-
-        private static string SearchDirectories(string path, string prj)
-        {
-            try
-            {
-                if (Directory.EnumerateDirectories(path, prj + "*").Any())
-                {
-                    string[] s = Directory.GetDirectories(path, prj + "*");
-                    return s[0];
-                }
-            }
-            catch (Exception e)
-            {
-                FlexibleMessageBox.Show("Couldn't find selected directory.\n");
-                Console.Write(e);
-            }
-            return "";
         }
 
         private void SaveEmailToFileButton_Click(object sender, RibbonControlEventArgs e)
@@ -164,8 +106,9 @@ namespace OEFCemail
                     InitialDirectory = dir,
                     FileName = mailItem.Subject
                 };
-                saveFileDialog.ShowDialog();
 
+                saveFileDialog.ShowDialog(); 
+                
                 // If the file name is not an empty string open it for saving.
                 if (saveFileDialog.FileName != "")
                     mailItem.SaveAs(saveFileDialog.FileName, Outlook.OlSaveAsType.olMSG);
@@ -176,21 +119,20 @@ namespace OEFCemail
             }
         }
 
-
         private async void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
         {
             if (mailItem != null)
             {
-                string sub;
-                if (mailItem.Subject == null)
-                    sub = "(no subject)";
-                else
-                    sub = mailItem.Subject;
-
                 string dir = GetProjectDirectory();
 
                 if (mailItem != null)
                 {
+                    string sub;
+                    if (mailItem.Subject == null)
+                        sub = "(no subject)";
+                    else
+                        sub = mailItem.Subject;
+
                     OpenFileDialog openFileDialog = new OpenFileDialog
                     {
                         Filter = "Word Documents|*.docx",
@@ -198,6 +140,7 @@ namespace OEFCemail
                         RestoreDirectory = true,
                         InitialDirectory = dir
                     };
+
                     openFileDialog.ShowDialog();
 
                     if (openFileDialog.FileName != "")
@@ -210,6 +153,7 @@ namespace OEFCemail
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
                             {
+                                // Run the emailSaver asychronously
                                 await Task.Run(() => emailSaver.SaveAsync(mailItem));
                             }
                             catch (Exception exc)
@@ -225,14 +169,70 @@ namespace OEFCemail
                     }
                 }
             }
-            else if (mailItem == null)
+            else
             {
                 FlexibleMessageBox.Show("Mail Item Not Selected.");
             }
-            else
+        }
+
+        // Return the Project Directory in the G Drive in the OEFC server
+        // based on the project type selected and user-inputted project # 
+        private String GetProjectDirectory()
+        {
+            string path = "G:\\"; // the directory of the Projects drive using Windows formatting
+            string folder = folderLocationDropDown.SelectedItem.ToString();
+            string prj = projectEditBox.Text;
+            string dir;
+            bool prjNum = (prj.Length == 5);
+
+            switch (folder)
             {
-                FlexibleMessageBox.Show("Mail Item Does Not Have a Subject.");
+                case "Projects":
+                    if (prjNum)
+                        // Given a project # that's 5 digits long, go into the folder of the year
+                        // that project is in (20 + the first 2 numbers of the given prj #)
+                        // and find a folder with the same project #
+                        path += "20" + prj.Substring(0, 2) + " Projects\\";
+                    else
+                        FlexibleMessageBox.Show("Make sure the inputted project number is 5 digits");
+                    break;
+                case "At Risk":
+                    path += "At Risk\\";
+                    break;
+                case "Overhead":
+                    path += "OverHead Projects (OHPs)\\";
+                    break;
             }
+
+            // if user inputted a project #
+            if (prjNum)
+            {
+                dir = SearchDirectories(path, prj);
+                if (!dir.Equals(""))
+                    return dir;
+            }
+
+            return path;
+        }
+
+        // Search the directory of the given path, return the string of the first directory found.
+        private static string SearchDirectories(string path, string prj)
+        {
+            try
+            {
+                if (Directory.EnumerateDirectories(path, prj + "*").Any())
+                {
+                    string[] s = Directory.GetDirectories(path, prj + "*");
+                    return s[0];
+                }
+            }
+            catch
+            {
+                FlexibleMessageBox.Show("Couldn't find directory in the G Drive on the server.\n" +
+                     "Make sure you're connected to the server and you have the correct project number typed in the toolbar.");
+            }
+
+            return "";
         }
     }
 }

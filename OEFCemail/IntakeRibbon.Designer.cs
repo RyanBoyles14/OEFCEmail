@@ -38,18 +38,19 @@ namespace OEFCemail
             Microsoft.Office.Tools.Ribbon.RibbonDropDownItem ribbonDropDownItemImpl1 = this.Factory.CreateRibbonDropDownItem();
             Microsoft.Office.Tools.Ribbon.RibbonDropDownItem ribbonDropDownItemImpl2 = this.Factory.CreateRibbonDropDownItem();
             Microsoft.Office.Tools.Ribbon.RibbonDropDownItem ribbonDropDownItemImpl3 = this.Factory.CreateRibbonDropDownItem();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(IntakeRibbon));
             this.Tab1 = this.Factory.CreateRibbonTab();
             this.group1 = this.Factory.CreateRibbonGroup();
             this.folderLocationDropDown = this.Factory.CreateRibbonDropDown();
             this.projectEditBox = this.Factory.CreateRibbonEditBox();
             this.separator1 = this.Factory.CreateRibbonSeparator();
-            this.separator2 = this.Factory.CreateRibbonSeparator();
             this.saveEmailToFileButton = this.Factory.CreateRibbonButton();
+            this.separator2 = this.Factory.CreateRibbonSeparator();
             this.saveEmailToNotesButton = this.Factory.CreateRibbonButton();
-            this.emailLabel = this.Factory.CreateRibbonLabel();
             this.group2 = this.Factory.CreateRibbonGroup();
-            this.dateLabel = this.Factory.CreateRibbonLabel();
+            this.emailLabel = this.Factory.CreateRibbonLabel();
             this.senderLabel = this.Factory.CreateRibbonLabel();
+            this.dateLabel = this.Factory.CreateRibbonLabel();
             this.Tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -95,50 +96,50 @@ namespace OEFCemail
             // 
             this.separator1.Name = "separator1";
             // 
-            // separator2
-            // 
-            this.separator2.Name = "separator2";
-            // 
             // saveEmailToFileButton
             // 
             this.saveEmailToFileButton.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.saveEmailToFileButton.Image = global::OEFCemail.Properties.Resources.savefile;
+            this.saveEmailToFileButton.Image = ((System.Drawing.Image)(resources.GetObject("saveEmailToFileButton.Image")));
             this.saveEmailToFileButton.Label = "Save Email To File";
             this.saveEmailToFileButton.Name = "saveEmailToFileButton";
             this.saveEmailToFileButton.ShowImage = true;
             this.saveEmailToFileButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.SaveEmailToFileButton_Click);
             // 
+            // separator2
+            // 
+            this.separator2.Name = "separator2";
+            // 
             // saveEmailToNotesButton
             // 
             this.saveEmailToNotesButton.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.saveEmailToNotesButton.Image = global::OEFCemail.Properties.Resources.savenotes;
+            this.saveEmailToNotesButton.Image = ((System.Drawing.Image)(resources.GetObject("saveEmailToNotesButton.Image")));
             this.saveEmailToNotesButton.Label = "Save Email to Notes";
             this.saveEmailToNotesButton.Name = "saveEmailToNotesButton";
             this.saveEmailToNotesButton.ShowImage = true;
             this.saveEmailToNotesButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.SaveEmailToNotesButton_Click);
-            // 
-            // emailLabel
-            // 
-            this.emailLabel.Label = "Subject: ";
-            this.emailLabel.Name = "emailLabel";
             // 
             // group2
             // 
             this.group2.Items.Add(this.emailLabel);
             this.group2.Items.Add(this.senderLabel);
             this.group2.Items.Add(this.dateLabel);
-            this.group2.Label = "SelectedEmail";
+            this.group2.Label = "Selected Email";
             this.group2.Name = "group2";
             // 
-            // dateLabel
+            // emailLabel
             // 
-            this.dateLabel.Label = "Date: ";
-            this.dateLabel.Name = "dateLabel";
+            this.emailLabel.Label = "Subject: ";
+            this.emailLabel.Name = "emailLabel";
             // 
             // senderLabel
             // 
             this.senderLabel.Label = "Sender: ";
             this.senderLabel.Name = "senderLabel";
+            // 
+            // dateLabel
+            // 
+            this.dateLabel.Label = "Date: ";
+            this.dateLabel.Name = "dateLabel";
             // 
             // IntakeRibbon
             // 
