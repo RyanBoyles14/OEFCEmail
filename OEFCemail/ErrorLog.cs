@@ -9,9 +9,13 @@ namespace OEFCemail
     //https://cybarlab.com/save-error-log-in-text-file-in-c-sharp
     class ErrorLog
     {
+        //TODO: revise to only have one log file and one instance of ErrorLog, in case of multiple exceptions in one run of EmailSaver
+
         public bool WriteErrorLog(string LogMessage)
         {
-            bool Status = false;
+            bool status = false;
+
+            // get preferred directory to save logs in from AppSettings
             string LogDirectory = ConfigurationManager.AppSettings["LogDirectory"].ToString();
 
             DateTime CurrentDateTime = DateTime.Now;
@@ -19,6 +23,7 @@ namespace OEFCemail
             string logLine = BuildLogLine(CurrentDateTime, LogMessage);
             string file = Path.Combine(LogDirectory, "Log_" + LogTime(DateTime.Now) + ".txt");
 
+            // write to log file
             lock (typeof(ErrorLog))
             {
                 StreamWriter oStreamWriter = null;
@@ -26,11 +31,7 @@ namespace OEFCemail
                 {
                     oStreamWriter = new StreamWriter(file, true);
                     oStreamWriter.WriteLine(logLine);
-                    Status = true;
-                }
-                catch
-                {
-
+                    status = true;
                 }
                 finally
                 {
@@ -40,10 +41,11 @@ namespace OEFCemail
                     }
                 }
             }
-            return Status;
+            return status;
         }
 
-
+        // Check for directory to save log files
+        // if none, create it
         private bool CheckCreateLogDirectory(string LogPath)
         {
             bool loggingDirectoryExists = false;
@@ -67,7 +69,7 @@ namespace OEFCemail
             return loggingDirectoryExists;
         }
 
-
+        // return string of error log to save in file
         private string BuildLogLine(DateTime CurrentDateTime, string LogMessage)
         {
             StringBuilder loglineStringBuilder = new StringBuilder();
@@ -77,6 +79,7 @@ namespace OEFCemail
             return loglineStringBuilder.ToString();
         }
 
+        // return formatted timestamp for file naming and timestamping error logs
         private string LogTime(DateTime CurrentDateTime)
         {
             return CurrentDateTime.ToString("yyyy-MM-dd_HH.mm.ss");

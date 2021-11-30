@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -12,8 +13,6 @@ namespace OEFCemail
 {
     class EmailSaver
     {
-        public bool Initialized = true;
-
         // Mail properties
         private static string _filename;
         private static string _subject;
@@ -26,15 +25,22 @@ namespace OEFCemail
         private static Word.Application oWord;
         private static Word.Document oDoc;
 
-        // Ranges
+        // The starting position in the document where the mail item is.
+        // Calculated as the end of the document before the mail item is copied into it
+        // This int changes is not equal to mailRange.Start
         private static int mailStartRange;
+
+        // Range in the document where the mail item's content is copied to
         private static Word.Range mailRange;
+
+        // Range in the Project Notes to scroll into view
+        // when showing the changes made to the document to the user
         private static Word.Range finalRange;
 
-        // missing reference
+        // missing reference, used for opening/inserting Word docs
         private static object missing = Type.Missing;
         
-        // common newline/whitespace characters to trim
+        // common newline/whitespace characters to trim from the main time or document
         private static readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
 
         public EmailSaver(string filename, string subject, string sender, string receiver, string time,
@@ -46,39 +52,47 @@ namespace OEFCemail
             _recipient = receiver;
             _time = time;
             _attachment = attachment;
+        }
 
-            oWord = new Word.Application();
+        public bool Initialize()
+        {
 
+            // from https://stackoverflow.com/questions/6777422/disposing-of-microsoft-office-interop-word-application
+            // Prevents opening a new Word app if one is already open.
+            // Also allows the program to edit docs the user already has open.
             try
             {
-                oDoc = oWord.Documents.Open(filename, ref missing, ref missing, ref missing,
-                    ref missing, ref missing, ref missing, ref missing, ref missing, ref missing,
-                    ref missing, ref missing, ref missing, ref missing, ref missing);
+                oWord = (Word.Application) Marshal.GetActiveObject("Word.Application");
+            }
+            catch (COMException ex) when (ex.HResult == -2147221021)
+            {
+                oWord = new Word.Application();
+            }
+
+            // open the user-selected Word doc
+            try
+            {
+                oDoc = oWord.Documents.Open(_filename, Visible: false);
 
                 if (oDoc == null)
                 {
-                    FlexibleMessageBox.Show("Error Opening Word Document. Terminating Processing...");
-                    Initialized = false;
+                    throw new Exception("Error Opening Word Document. Terminating Processing...");
                 }
                 else if (oDoc.ReadOnly)
                 {
-                    FlexibleMessageBox.Show("Word Document is Read-Only. Terminating Processing...");
-                    Initialized = false;
+                    throw new Exception("Word Document is Read-Only. Terminating Processing...");
                 }
             }
             catch (Exception exc)
             {
-                oWord.Quit();
-
-                FlexibleMessageBox.Show("Error Opening Word Doc. Terminating Processing...");
-                ErrorLog log = new ErrorLog();
-                log.WriteErrorLog(exc.ToString());
-                Initialized = false;
+                HandleException(exc);
+                return false;
             }
 
+            return true;
         }
 
-        #region Add To Document
+        #region Add Mail Item To Document
         public async Task SaveAsync(Outlook.MailItem item)
         {
             AppendToDoc(item);
@@ -86,7 +100,7 @@ namespace OEFCemail
 
             await Task.Delay(0);
         }
-        
+
         // Append all the formatted text to the end of the project notes document
         // Requires saving the Outlook email as a temporary Document in order to preserve the formatting
         // It needs to be a separate document in order to insert the temp document into the Notes document
@@ -108,26 +122,7 @@ namespace OEFCemail
 
         }
 
-        // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
-        public void TerminateProcess()
-        {
-            // In the case an error occurs when trying to close Word
-            try
-            {
-                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
-                oWord.Quit(ref saveChanges);
-            }
-            catch (Exception exc)
-            {
-                FlexibleMessageBox.Show(exc + "\nError closing Word.");
-
-                ErrorLog log = new ErrorLog();
-                log.WriteErrorLog(exc.ToString());
-            }
-
-        }
-
-        public static void SaveToDoc()
+        public void SaveToDoc()
         {
             bool success = true;
             bool haveMoreMessages = true;
@@ -203,7 +198,8 @@ namespace OEFCemail
             }
             else
             {
-                oWord.Quit();
+                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
+                oWord.Quit(ref saveChanges);
             }
         }
 
@@ -284,7 +280,7 @@ namespace OEFCemail
 
         // parse the time based on the typical formats from Outlook emails
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
-        private static DateTime ParseTime(string time, bool isFirstMsg)
+        private DateTime ParseTime(string time, bool isFirstMsg)
         {
             string pattern;
             if (isFirstMsg)
@@ -309,24 +305,23 @@ namespace OEFCemail
 
             if (!parsed) // Throw an exception if parsing the second time still doesn't work
             {
-                throw new Exception("Error parsing message's sent time\r" +
-                    "Error occurred at text: \"" + time + "\"");
+                HandleException(new Exception("Error parsing message's sent time\r" +
+                    "Error occurred at text: \"" + time + "\""));
             }
 
             return parsedDate;
         }
 
-        private static (string, string, string) ParseNextMsgInfo(int length)
+        private (string, string, string) ParseNextMsgInfo(int length)
         {
             Word.Range range = DuplicateMailRange(mailStartRange + length);
             mailStartRange += length;
 
             string[] split = range.Text.Split('\v');
 
-            string sender;
-            string time;
-            string recipient;
-
+            string sender = String.Empty;
+            string time = String.Empty;
+            string recipient = String.Empty;
 
             //Most emails use this format:
             //From: X\v
@@ -342,9 +337,9 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                throw new Exception("Error parsing messages in the chain.\r" +
+                HandleException(new Exception("Error parsing messages in the email chain.\r" +
                     "Error found at text:\r" +
-                    "\"" + split[0] + "\r" + split[1] + "\r" + split[2] + "\"", exc);
+                    "\"" + split[0] + "\r" + split[1] + "\r" + split[2] + "\"", exc));
             }
 
             // if it includes CC'd recipients, add to the list of recipients
@@ -483,7 +478,7 @@ namespace OEFCemail
         #endregion
 
         #region Insert into Row
-        private static void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
+        private void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
@@ -551,8 +546,8 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                throw new Exception("Error copying text over.\r" +
-                    "Error occurred at text: \"" + range.Text + "\"", exc);
+                HandleException(new Exception("Error copying text over.\r" +
+                    "Error occurred at text: \"" + range.Text + "\"", exc));
             }
 
             // The top-most message doesn't have any empty newlines before the start
@@ -609,6 +604,38 @@ namespace OEFCemail
         }
 
         #endregion
-    }
 
+        #region Exception Handling
+        // There are multiple points of failure because parsing is inflexible.
+        // For any exception, display a message to the user, log it, and terminate EmailSaver
+        private void HandleException(Exception exc)
+        {
+            FlexibleMessageBox.Show(exc.Message);
+
+            ErrorLog log = new ErrorLog();
+            log.WriteErrorLog(exc.ToString());
+
+            TerminateProcess();
+        }
+
+        // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
+        public void TerminateProcess()
+        {
+            // In the case an error occurs when trying to close Word
+            try
+            {
+                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
+                oWord.Quit(ref saveChanges);
+            }
+            catch (Exception exc)
+            {
+                FlexibleMessageBox.Show(exc + "\nError closing Word.");
+
+                ErrorLog log = new ErrorLog();
+                log.WriteErrorLog(exc.ToString());
+            }
+
+        }
+        #endregion
+    }
 }

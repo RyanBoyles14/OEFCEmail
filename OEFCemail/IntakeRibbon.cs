@@ -119,6 +119,8 @@ namespace OEFCemail
             }
         }
 
+        // On button click, open a file dialogue box,
+        // then create an instance of EmailSaver to save to Project Notes
         private async void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
         {
             if (mailItem != null)
@@ -148,7 +150,7 @@ namespace OEFCemail
                         EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub,
                             GetSender(), GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
 
-                        if (emailSaver.Initialized)
+                        if (emailSaver.Initialize())
                         {
                             //Make sure to test with read-only and not "selecting" a mail item
                             try
@@ -193,7 +195,7 @@ namespace OEFCemail
                         // that project is in (20 + the first 2 numbers of the given prj #)
                         // and find a folder with the same project #
                         path += "20" + prj.Substring(0, 2) + " Projects\\";
-                    else
+                    else if(prj.Length > 0)
                         FlexibleMessageBox.Show("Make sure the inputted project number is 5 digits");
                     break;
                 case "At Risk":
@@ -204,7 +206,7 @@ namespace OEFCemail
                     break;
             }
 
-            // if user inputted a project #
+            // if user inputted a project number
             if (prjNum)
             {
                 dir = SearchDirectories(path, prj);

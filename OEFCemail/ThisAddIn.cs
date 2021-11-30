@@ -39,6 +39,9 @@ namespace OEFCemail
 
         #endregion
 
+        // When the user selects a different mail item,
+        // update the mail item currently selected in the IntakeRibbon,
+        // and change the labels showing the currently selected item
         void Item_SelectionChange()
         {
             // https://codesteps.com/2018/08/06/outlook-2010-add-in-get-mailitem-using-c/
