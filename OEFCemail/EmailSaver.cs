@@ -43,6 +43,8 @@ namespace OEFCemail
         // common newline/whitespace characters to trim from the main time or document
         private static readonly char[] trimChars = { '\r', '\a', '\n', '\v', ' ' };
 
+        private static ErrorLog erLog;
+
         public EmailSaver(string filename, string subject, string sender, string receiver, string time,
                             string attachment)
         {
@@ -52,11 +54,13 @@ namespace OEFCemail
             _recipient = receiver;
             _time = time;
             _attachment = attachment;
+
+            erLog = new ErrorLog();
         }
 
         public bool Initialize()
         {
-
+            bool initialized = false;
             // from https://stackoverflow.com/questions/6777422/disposing-of-microsoft-office-interop-word-application
             // Prevents opening a new Word app if one is already open.
             // Also allows the program to edit docs the user already has open.
@@ -76,20 +80,44 @@ namespace OEFCemail
 
                 if (oDoc == null)
                 {
-                    throw new Exception("Error Opening Word Document. Terminating Processing...");
+                    FlexibleMessageBox.Show("Error Opening Word Document.\rTerminating Process.");
                 }
                 else if (oDoc.ReadOnly)
                 {
-                    throw new Exception("Word Document is Read-Only. Terminating Processing...");
+                    FlexibleMessageBox.Show("Word Document is Read-Only.\rTerminating Process.");
+                }
+                else if (HasTables())
+                {
+                    initialized = true;
                 }
             }
             catch (Exception exc)
             {
-                HandleException(exc);
-                return false;
+                HandleException(new Exception("Error Opening Word Document.\rTerminating Process.", exc));
             }
 
-            return true;
+            return initialized;
+        }
+
+        private bool HasTables()
+        {
+            bool hasTables = true;
+
+            if (oDoc.Tables.Count == 0)
+            {
+                FlexibleMessageBox.Show("Word Document does not include any tables." +
+                    "\rCheck to make sure the document you selected is a \"Project Notes\" document." +
+                    "\rTerminating Process.");
+                hasTables = false;
+            } else if (oDoc.Tables[1].Columns.Count != 2)
+            {
+                FlexibleMessageBox.Show("The Table found in the Word Document does not have the right amount of columns." +
+                    "\rCheck to make sure the document you selected is a \"Project Notes\" document." +
+                    "\rTerminating Process.");
+                hasTables = false;
+            }
+
+            return hasTables;
         }
 
         #region Add Mail Item To Document
@@ -157,7 +185,7 @@ namespace OEFCemail
                 {
                     if (isTopMessage)
                     {
-                        FlexibleMessageBox.Show("Current email thread may have already been saved. Terminating process...");
+                        FlexibleMessageBox.Show("Current email thread may have already been saved.\rTerminating Process.");
                         success = false;
                     }
                     break;
@@ -314,10 +342,10 @@ namespace OEFCemail
 
         private (string, string, string) ParseNextMsgInfo(int length)
         {
-            Word.Range range = DuplicateMailRange(mailStartRange + length);
+            Word.Range mailRange = DuplicateMailRange(mailStartRange + length);
             mailStartRange += length;
 
-            string[] split = range.Text.Split('\v');
+            string[] split = mailRange.Text.Split('\v');
 
             string sender = String.Empty;
             string time = String.Empty;
@@ -368,9 +396,9 @@ namespace OEFCemail
 
         private static DialogResult CompareMessages(Word.Range contentRow, String sub, DateTime dt, int propStart)
         {
-            Word.Range mail = DuplicateMailRange(propStart);
+            Word.Range mailRange = DuplicateMailRange(propStart);
 
-            string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mail.Text;
+            string m = "[Subject: " + sub + "]\r" + dt.ToString("MM-dd-yy h:mmtt") + "\r" + mailRange.Text;
 
             return FlexibleMessageBox.Show(
                 "Are the contents of the two messages below the same?\r" +
@@ -393,11 +421,11 @@ namespace OEFCemail
         #endregion
 
         #region Find Rows 
-        private static int FindRow(string sub, DateTime dt, int propStart, int row)
+        private int FindRow(string sub, DateTime dt, int propStart, int row)
         {
+            Word.Table oTbl = oDoc.Tables[1]; // Assuming there is only one table in the project notes
 
-            Word.Table oTbl = oDoc.Tables[1];
-            Word.Range rng = oTbl.Range; // Assuming there is only one table in the project notes
+            Word.Range rng = oTbl.Range; 
             object findSub = "[Subject: " + sub + "]"; // Using the new note format "[Subject: X]"
 
             // row = 0 or row = -1 means the prev message was added to the end of the table
@@ -485,7 +513,7 @@ namespace OEFCemail
             int rowCount = oTbl.Rows.Count;
             bool addToEnd = (row == 0) || (row == rowCount);
 
-            int startRangeBeforeCopy = mailRange.Start;
+            int startRangeBeforeCopy = EmailSaver.mailRange.Start;
             int diff;
             int length = endRange - mailStartRange;
 
@@ -526,28 +554,27 @@ namespace OEFCemail
             }
 
             // Adding a new row may cause the ranges for the mail messages to shift. Update as needed
-            if (startRangeBeforeCopy != mailRange.Start)
+            if (startRangeBeforeCopy != EmailSaver.mailRange.Start)
             {
-                diff = mailRange.Start - startRangeBeforeCopy;
+                diff = EmailSaver.mailRange.Start - startRangeBeforeCopy;
                 mailStartRange += diff;
                 endRange += diff;
-                startRangeBeforeCopy = mailRange.Start;
+                startRangeBeforeCopy = EmailSaver.mailRange.Start;
             }
 
             Word.Range tblRange = finalRange = oTbl.Cell(row, 1).Range;
 
-            Word.Range range = DuplicateMailRange(endRange);
+            Word.Range mailRange = DuplicateMailRange(endRange);
 
-            // Copy from the message's range into the table row's range.
             try
             {
-                //TODO: change text-font to that of our template?
-                tblRange.FormattedText = range.FormattedText;
+                // Copy from the message's range into the table row's range.
+                tblRange.FormattedText = mailRange.FormattedText;
             }
             catch (Exception exc)
             {
                 HandleException(new Exception("Error copying text over.\r" +
-                    "Error occurred at text: \"" + range.Text + "\"", exc));
+                    "Error occurred at text: \"" + mailRange.Text + "\"", exc));
             }
 
             // The top-most message doesn't have any empty newlines before the start
@@ -569,9 +596,9 @@ namespace OEFCemail
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
             // Copying the mail message into the row may cause the ranges for the mail messages to shift. Update as needed
-            if (startRangeBeforeCopy != mailRange.Start)
+            if (startRangeBeforeCopy != EmailSaver.mailRange.Start)
             {
-                diff = mailRange.Start - startRangeBeforeCopy;
+                diff = EmailSaver.mailRange.Start - startRangeBeforeCopy;
                 mailStartRange += diff + length;
             }
         }
@@ -608,12 +635,10 @@ namespace OEFCemail
         #region Exception Handling
         // There are multiple points of failure because parsing is inflexible.
         // For any exception, display a message to the user, log it, and terminate EmailSaver
-        private void HandleException(Exception exc)
+        public void HandleException(Exception exc)
         {
             FlexibleMessageBox.Show(exc.Message);
-
-            ErrorLog log = new ErrorLog();
-            log.WriteErrorLog(exc.ToString());
+            erLog.WriteErrorLog(exc.ToString());
 
             TerminateProcess();
         }
@@ -629,10 +654,9 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                FlexibleMessageBox.Show(exc + "\nError closing Word.");
-
-                ErrorLog log = new ErrorLog();
-                log.WriteErrorLog(exc.ToString());
+                FlexibleMessageBox.Show("Error closing Word.");
+;
+                erLog.WriteErrorLog(exc.ToString());
             }
 
         }

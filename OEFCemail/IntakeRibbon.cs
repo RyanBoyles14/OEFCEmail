@@ -144,29 +144,39 @@ namespace OEFCemail
                     };
 
                     openFileDialog.ShowDialog();
+                    string filename = openFileDialog.FileName;
 
-                    if (openFileDialog.FileName != "")
+                    if (filename != "")
                     {
-                        EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub,
+                        EmailSaver emailSaver = null;
+
+                        if (filename.Contains("Notes.doc"))
+                        {
+                            emailSaver = new EmailSaver(openFileDialog.FileName, sub,
                             GetSender(), GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
 
-                        if (emailSaver.Initialize())
-                        {
-                            //Make sure to test with read-only and not "selecting" a mail item
-                            try
+                            if (emailSaver.Initialize())
                             {
-                                // Run the emailSaver asychronously
-                                await Task.Run(() => emailSaver.SaveAsync(mailItem));
+                                try
+                                {
+                                    // Run the emailSaver asychronously
+                                    await Task.Run(() => emailSaver.SaveAsync(mailItem));
+                                }
+                                catch (Exception exc)
+                                {
+                                    emailSaver.HandleException(exc);
+                                }
                             }
-                            catch (Exception exc)
+                            else
                             {
-                                FlexibleMessageBox.Show(exc.Message);
-
-                                ErrorLog log = new ErrorLog();
-                                log.WriteErrorLog(exc.ToString());
-
                                 emailSaver.TerminateProcess();
                             }
+                        }
+                        else
+                        {
+                            FlexibleMessageBox.Show("The selected Word Document ("+filename+") does not appear " +
+                                "to be a Project Notes document." +
+                                "\rTerminating Process.");
                         }
                     }
                 }

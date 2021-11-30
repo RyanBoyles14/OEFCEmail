@@ -9,20 +9,22 @@ namespace OEFCemail
     //https://cybarlab.com/save-error-log-in-text-file-in-c-sharp
     class ErrorLog
     {
-        //TODO: revise to only have one log file and one instance of ErrorLog, in case of multiple exceptions in one run of EmailSaver
 
+        // get preferred directory to save logs in from AppSettings
+        private readonly string LogDirectory = ConfigurationManager.AppSettings["LogDirectory"].ToString();
+        private static string file;
+
+        public ErrorLog()
+        {
+            CheckCreateLogDirectory(LogDirectory);
+            file = Path.Combine(LogDirectory, "Log_" + LogTime(DateTime.Now) + ".txt");
+        }
+        
         public bool WriteErrorLog(string LogMessage)
         {
             bool status = false;
-
-            // get preferred directory to save logs in from AppSettings
-            string LogDirectory = ConfigurationManager.AppSettings["LogDirectory"].ToString();
-
-            DateTime CurrentDateTime = DateTime.Now;
-            CheckCreateLogDirectory(LogDirectory);
-            string logLine = BuildLogLine(CurrentDateTime, LogMessage);
-            string file = Path.Combine(LogDirectory, "Log_" + LogTime(DateTime.Now) + ".txt");
-
+            string logLine = BuildLogLine(DateTime.Now, LogMessage);
+            
             // write to log file
             lock (typeof(ErrorLog))
             {
