@@ -45,7 +45,7 @@ namespace OEFCemail
 
         private static ErrorLog erLog;
 
-        public EmailSaver(string filename, string subject, string sender, string receiver, string time,
+        internal EmailSaver(string filename, string subject, string sender, string receiver, string time,
                             string attachment)
         {
             _filename = filename;
@@ -58,20 +58,11 @@ namespace OEFCemail
             erLog = new ErrorLog();
         }
 
-        public bool Initialize()
+        internal bool OpenDoc()
         {
-            bool initialized = false;
-            // from https://stackoverflow.com/questions/6777422/disposing-of-microsoft-office-interop-word-application
-            // Prevents opening a new Word app if one is already open.
-            // Also allows the program to edit docs the user already has open.
-            try
-            {
-                oWord = (Word.Application) Marshal.GetActiveObject("Word.Application");
-            }
-            catch (COMException ex) when (ex.HResult == -2147221021)
-            {
-                oWord = new Word.Application();
-            }
+            bool openDoc = false;
+            
+            oWord = new Word.Application();
 
             // open the user-selected Word doc
             try
@@ -88,15 +79,15 @@ namespace OEFCemail
                 }
                 else if (HasTables())
                 {
-                    initialized = true;
+                    openDoc = true;
                 }
             }
             catch (Exception exc)
             {
-                HandleException(new Exception("Error Opening Word Document.\rTerminating Process.", exc));
+                HandleException(exc);
             }
 
-            return initialized;
+            return openDoc;
         }
 
         private bool HasTables()
@@ -121,20 +112,12 @@ namespace OEFCemail
         }
 
         #region Add Mail Item To Document
-        public async Task SaveAsync(Outlook.MailItem item)
-        {
-            AppendToDoc(item);
-            SaveToDoc();
-
-            await Task.Delay(0);
-        }
-
         // Append all the formatted text to the end of the project notes document
         // Requires saving the Outlook email as a temporary Document in order to preserve the formatting
         // It needs to be a separate document in order to insert the temp document into the Notes document
         // Inserting the file is the best alternative to copy/paste, which the user could accidentally use mid-function
         // After inserting the file, delete the temporary file
-        public static void AppendToDoc(Outlook.MailItem item)
+        public void AppendToDoc(Outlook.MailItem item)
         {
             object path = System.IO.Path.GetDirectoryName(_filename) + "\\(temporary).doc";
             object format = Word.WdSaveFormat.wdFormatDocument;
@@ -147,10 +130,9 @@ namespace OEFCemail
             mailRange.InsertFile((string)path, ref missing, ref missing, ref missing, ref missing);
 
             System.IO.File.Delete((string)path);
-
         }
 
-        public void SaveToDoc()
+        public void SaveToDoc(System.Threading.CancellationToken ct)
         {
             bool success = true;
             bool haveMoreMessages = true;
@@ -204,13 +186,18 @@ namespace OEFCemail
                     rec = s3;
                     _attachment = "";
                 }
-            } // endwhile (hasMoreMessages)
+
+                // if the user requests to cancel the process, throw an exception to be caught by the IntakeRibbon
+                ct.ThrowIfCancellationRequested();
+            } // end while (hasMoreMessages)
 
             mailRange.Delete();
 
             Quit(success);
         }
+        #endregion
 
+        #region End Process
         private static void Quit(bool success)
         {
             
@@ -231,6 +218,32 @@ namespace OEFCemail
             }
         }
 
+        // There are multiple points of failure because parsing is inflexible.
+        // For any exception, display a message to the user, log it, and terminate EmailSaver
+        public void HandleException(Exception e)
+        {
+            FlexibleMessageBox.Show($"Exception thrown with message: {e.Message}");
+            erLog.WriteErrorLog(e.ToString());
+
+            CloseDoc();
+        }
+
+        // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
+        public void CloseDoc()
+        {
+            // In the case an error occurs when trying to close Word
+            try
+            {
+                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
+                oWord.Quit(ref saveChanges);
+            }
+            catch (Exception exc)
+            {
+                FlexibleMessageBox.Show("Error closing Word.");
+                erLog.WriteErrorLog(exc.ToString());
+            }
+
+        }
         #endregion
 
         #region Trim/Parse
@@ -365,9 +378,7 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                HandleException(new Exception("Error parsing messages in the email chain.\r" +
-                    "Error found at text:\r" +
-                    "\"" + split[0] + "\r" + split[1] + "\r" + split[2] + "\"", exc));
+                HandleException(exc);
             }
 
             // if it includes CC'd recipients, add to the list of recipients
@@ -573,8 +584,7 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                HandleException(new Exception("Error copying text over.\r" +
-                    "Error occurred at text: \"" + mailRange.Text + "\"", exc));
+                HandleException(exc);
             }
 
             // The top-most message doesn't have any empty newlines before the start
@@ -630,36 +640,6 @@ namespace OEFCemail
             return row;
         }
 
-        #endregion
-
-        #region Exception Handling
-        // There are multiple points of failure because parsing is inflexible.
-        // For any exception, display a message to the user, log it, and terminate EmailSaver
-        public void HandleException(Exception exc)
-        {
-            FlexibleMessageBox.Show(exc.Message);
-            erLog.WriteErrorLog(exc.ToString());
-
-            TerminateProcess();
-        }
-
-        // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
-        public void TerminateProcess()
-        {
-            // In the case an error occurs when trying to close Word
-            try
-            {
-                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
-                oWord.Quit(ref saveChanges);
-            }
-            catch (Exception exc)
-            {
-                FlexibleMessageBox.Show("Error closing Word.");
-;
-                erLog.WriteErrorLog(exc.ToString());
-            }
-
-        }
         #endregion
     }
 }

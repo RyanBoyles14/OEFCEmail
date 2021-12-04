@@ -19,7 +19,7 @@ namespace OEFCemail
             activeExplorer.SelectionChange += new Outlook.ExplorerEvents_10_SelectionChangeEventHandler(Item_SelectionChange);
         }
 
-        private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
+    private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             // Note: Outlook no longer raises this event. If you have code that 
             // must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785

@@ -47,6 +47,8 @@ namespace OEFCemail
             this.saveEmailToFileButton = this.Factory.CreateRibbonButton();
             this.separator2 = this.Factory.CreateRibbonSeparator();
             this.saveEmailToNotesButton = this.Factory.CreateRibbonButton();
+            this.separator3 = this.Factory.CreateRibbonSeparator();
+            this.cancelButton = this.Factory.CreateRibbonButton();
             this.group2 = this.Factory.CreateRibbonGroup();
             this.emailLabel = this.Factory.CreateRibbonLabel();
             this.senderLabel = this.Factory.CreateRibbonLabel();
@@ -72,6 +74,8 @@ namespace OEFCemail
             this.group1.Items.Add(this.saveEmailToFileButton);
             this.group1.Items.Add(this.separator2);
             this.group1.Items.Add(this.saveEmailToNotesButton);
+            this.group1.Items.Add(this.separator3);
+            this.group1.Items.Add(this.cancelButton);
             this.group1.Label = "Save Email";
             this.group1.Name = "group1";
             // 
@@ -117,6 +121,19 @@ namespace OEFCemail
             this.saveEmailToNotesButton.Name = "saveEmailToNotesButton";
             this.saveEmailToNotesButton.ShowImage = true;
             this.saveEmailToNotesButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.SaveEmailToNotesButton_Click);
+            // 
+            // separator3
+            // 
+            this.separator3.Name = "separator3";
+            // 
+            // cancelButton
+            // 
+            this.cancelButton.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.cancelButton.Image = ((System.Drawing.Image)(resources.GetObject("cancelButton.Image")));
+            this.cancelButton.Label = "Cancel Process";
+            this.cancelButton.Name = "cancelButton";
+            this.cancelButton.ShowImage = true;
+            this.cancelButton.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.CancelButton_Click);
             // 
             // group2
             // 
@@ -171,6 +188,8 @@ namespace OEFCemail
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group2;
         internal Microsoft.Office.Tools.Ribbon.RibbonLabel senderLabel;
         internal Microsoft.Office.Tools.Ribbon.RibbonLabel dateLabel;
+        internal Microsoft.Office.Tools.Ribbon.RibbonSeparator separator3;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton cancelButton;
     }
 
     partial class ThisRibbonCollection

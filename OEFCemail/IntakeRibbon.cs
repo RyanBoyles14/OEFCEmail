@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using JR.Utils.GUI.Forms;
@@ -20,7 +21,7 @@ namespace OEFCemail
         private const string PidTagSenderSmtpAddress = "http://schemas.microsoft.com/mapi/proptag/0x5D01001F";// See 2.1006
 
         private Outlook.MailItem mailItem;
-
+        private CancellationTokenSource tokenSource;
         private void IntakeRibbon_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -146,30 +147,53 @@ namespace OEFCemail
                     openFileDialog.ShowDialog();
                     string filename = openFileDialog.FileName;
 
-                    if (filename != "")
-                    {
-                        EmailSaver emailSaver = null;
-
+                    if (!filename.Equals("")) { 
                         if (filename.Contains("Notes.doc"))
                         {
-                            emailSaver = new EmailSaver(openFileDialog.FileName, sub,
-                            GetSender(), GetRecipients(), mailItem.ReceivedTime.ToString(), GetAttachments());
+                            string send = GetSender();
+                            string recip = GetRecipients();
+                            string time = mailItem.ReceivedTime.ToString();
+                            string att = GetAttachments();
 
-                            if (emailSaver.Initialize())
+                            tokenSource = new CancellationTokenSource();
+                            var ct = tokenSource.Token;
+
+                            EmailSaver es = new EmailSaver(openFileDialog.FileName, sub, send, recip, time, att); ;
+                            bool docOpen = false;
+
+                            // run the EmailSaver and all Microsoft Word functionality asychronously
+                            Task task = Task.Run(() => {
+                                docOpen = es.OpenDoc();
+                                if (docOpen)
+                                {
+                                    ct.ThrowIfCancellationRequested();
+                                    es.AppendToDoc(mailItem);
+                                    ct.ThrowIfCancellationRequested();
+                                    es.SaveToDoc(ct);
+                                }
+                                else
+                                {
+                                    es.CloseDoc();
+                                }
+                            }, ct);
+
+                            // Run the emailSaver asychronously
+                            // wait until the task is done or until
+                            // an exception is thrown by the cancel token
+                            try
                             {
-                                try
-                                {
-                                    // Run the emailSaver asychronously
-                                    await Task.Run(() => emailSaver.SaveAsync(mailItem));
-                                }
-                                catch (Exception exc)
-                                {
-                                    emailSaver.HandleException(exc);
-                                }
+                                await task;
                             }
-                            else
+                            catch (OperationCanceledException)
                             {
-                                emailSaver.TerminateProcess();
+                                if(docOpen)
+                                    es.CloseDoc();
+
+                                FlexibleMessageBox.Show("Process Cancelled.");
+                            }
+                            finally
+                            {
+                                tokenSource.Dispose();
                             }
                         }
                         else
@@ -177,8 +201,9 @@ namespace OEFCemail
                             FlexibleMessageBox.Show("The selected Word Document ("+filename+") does not appear " +
                                 "to be a Project Notes document." +
                                 "\rTerminating Process.");
-                        }
+                        } 
                     }
+                    
                 }
             }
             else
@@ -245,6 +270,15 @@ namespace OEFCemail
             }
 
             return "";
+        }
+
+        // On click, the cancel taken created for the EmailSaver
+        // will throw an exception to be caught by the IntakeRibbon
+        // canceling the process.
+        private void CancelButton_Click(object sender, RibbonControlEventArgs e)
+        {
+            if(tokenSource != null)
+                tokenSource.Cancel();
         }
     }
 }
