@@ -69,11 +69,7 @@ namespace OEFCemail
             {
                 oDoc = oWord.Documents.Open(_filename, Visible: false);
 
-                if (oDoc == null)
-                {
-                    FlexibleMessageBox.Show("Error Opening Word Document.\rTerminating Process.");
-                }
-                else if (oDoc.ReadOnly)
+                if (oDoc.ReadOnly)
                 {
                     FlexibleMessageBox.Show("Word Document is Read-Only.\rTerminating Process.");
                 }
@@ -82,9 +78,9 @@ namespace OEFCemail
                     openDoc = true;
                 }
             }
-            catch (Exception exc)
+            catch
             {
-                HandleException(exc);
+                FlexibleMessageBox.Show("Error Opening Word Document.\rTerminating Process.");
             }
 
             return openDoc;
@@ -237,10 +233,9 @@ namespace OEFCemail
                 object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
                 oWord.Quit(ref saveChanges);
             }
-            catch (Exception exc)
+            catch
             {
                 FlexibleMessageBox.Show("Error closing Word.");
-                erLog.WriteErrorLog(exc.ToString());
             }
 
         }
