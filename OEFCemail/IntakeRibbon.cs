@@ -22,6 +22,7 @@ namespace OEFCemail
 
         private Outlook.MailItem mailItem;
         private CancellationTokenSource tokenSource;
+        private bool inProcess;
         private void IntakeRibbon_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -124,91 +125,103 @@ namespace OEFCemail
         // then create an instance of EmailSaver to save to Project Notes
         private async void SaveEmailToNotesButton_Click(object sender, RibbonControlEventArgs e)
         {
-            if (mailItem != null)
+            if(!inProcess)
             {
-                string dir = GetProjectDirectory();
-
+                inProcess = true;
                 if (mailItem != null)
                 {
-                    string sub;
-                    if (mailItem.Subject == null)
-                        sub = "(no subject)";
-                    else
-                        sub = mailItem.Subject;
+                    string dir = GetProjectDirectory();
 
-                    OpenFileDialog openFileDialog = new OpenFileDialog
+                    if (mailItem != null)
                     {
-                        Filter = "Word Documents|*.docx",
-                        Title = "Open a Word Doc File",
-                        RestoreDirectory = true,
-                        InitialDirectory = dir
-                    };
+                        string sub;
+                        if (mailItem.Subject == null)
+                            sub = "(no subject)";
+                        else
+                            sub = mailItem.Subject;
 
-                    openFileDialog.ShowDialog();
-                    string filename = openFileDialog.FileName;
-
-                    if (!filename.Equals("")) { 
-                        if (filename.Contains("Notes.doc"))
+                        OpenFileDialog openFileDialog = new OpenFileDialog
                         {
-                            string send = GetSender();
-                            string recip = GetRecipients();
-                            string time = mailItem.ReceivedTime.ToString();
-                            string att = GetAttachments();
+                            Filter = "Word Documents|*.docx",
+                            Title = "Open a Word Doc File",
+                            RestoreDirectory = true,
+                            InitialDirectory = dir
+                        };
 
-                            tokenSource = new CancellationTokenSource();
-                            var ct = tokenSource.Token;
+                        openFileDialog.ShowDialog();
+                        string filename = openFileDialog.FileName;
 
-                            EmailSaver es = new EmailSaver(openFileDialog.FileName, sub, send, recip, time, att); ;
-                            bool docOpen = false;
+                        if (!filename.Equals(""))
+                        {
+                            if (filename.Contains("Notes.doc"))
+                            {
+                                string send = GetSender();
+                                string recip = GetRecipients();
+                                string time = mailItem.ReceivedTime.ToString();
+                                string att = GetAttachments();
 
-                            // run the EmailSaver and all Microsoft Word functionality asychronously
-                            Task task = Task.Run(() => {
-                                docOpen = es.OpenDoc();
-                                if (docOpen)
+                                tokenSource = new CancellationTokenSource();
+                                var cancellationToken = tokenSource.Token;
+
+                                EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub, send, recip, time, att); ;
+                                bool docOpen = false;
+
+                                // run the EmailSaver and all Microsoft Word functionality asychronously
+                                Task task = Task.Run(() =>
                                 {
-                                    ct.ThrowIfCancellationRequested();
-                                    es.AppendToDoc(mailItem);
-                                    ct.ThrowIfCancellationRequested();
-                                    es.SaveToDoc(ct);
-                                }
-                                else
+                                    docOpen = emailSaver.OpenDoc();
+                                    if (docOpen)
+                                    {
+                                        cancellationToken.ThrowIfCancellationRequested();
+                                        emailSaver.AppendToDoc(mailItem);
+                                        cancellationToken.ThrowIfCancellationRequested();
+                                        emailSaver.SaveToDoc(cancellationToken);
+                                    }
+                                    else
+                                    {
+                                        emailSaver.CloseDoc();
+                                    }
+                                }, cancellationToken);
+
+                                // Run the emailSaver asychronously
+                                // wait until the task is done or until
+                                // an exception is thrown by the cancel token
+                                try
                                 {
-                                    es.CloseDoc();
+                                    await task;
                                 }
-                            }, ct);
+                                catch (OperationCanceledException)
+                                {
+                                    if (docOpen)
+                                        emailSaver.CloseDoc();
 
-                            // Run the emailSaver asychronously
-                            // wait until the task is done or until
-                            // an exception is thrown by the cancel token
-                            try
-                            {
-                                await task;
+                                    FlexibleMessageBox.Show("Process Cancelled.");
+                                }
+                                finally
+                                {
+                                    tokenSource.Dispose();
+                                }
                             }
-                            catch (OperationCanceledException)
+                            else
                             {
-                                if(docOpen)
-                                    es.CloseDoc();
-
-                                FlexibleMessageBox.Show("Process Cancelled.");
-                            }
-                            finally
-                            {
-                                tokenSource.Dispose();
+                                FlexibleMessageBox.Show("The selected Word Document (" + filename + ") does not appear " +
+                                    "to be a Project Notes document." +
+                                    "\rTerminating Process.");
                             }
                         }
-                        else
-                        {
-                            FlexibleMessageBox.Show("The selected Word Document ("+filename+") does not appear " +
-                                "to be a Project Notes document." +
-                                "\rTerminating Process.");
-                        } 
+
                     }
-                    
+
+                    inProcess = false;
+                }
+                else
+                {
+                    FlexibleMessageBox.Show("Mail Item Not Selected.");
                 }
             }
             else
             {
-                FlexibleMessageBox.Show("Mail Item Not Selected.");
+                FlexibleMessageBox.Show("The Process is Already Running");
             }
         }
 
@@ -277,8 +290,11 @@ namespace OEFCemail
         // canceling the process.
         private void CancelButton_Click(object sender, RibbonControlEventArgs e)
         {
-            if(tokenSource != null)
+            if (tokenSource != null)
+            {
                 tokenSource.Cancel();
+                inProcess = false;
+            }
         }
     }
 }
