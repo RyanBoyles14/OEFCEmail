@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using JR.Utils.GUI.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
@@ -201,7 +199,7 @@ namespace OEFCemail
              // Bring the document into view for the user.
             if (success)
             {
-                oDoc.ActiveWindow.ScrollIntoView(finalRange, false);
+                oDoc.ActiveWindow.ScrollIntoView(finalRange);
                 oDoc.ActiveWindow.WindowState = Microsoft.Office.Interop.Word.WdWindowState.wdWindowStateMaximize;
                 oDoc.ActiveWindow.Visible = true;
                 oDoc.Activate();
@@ -568,7 +566,8 @@ namespace OEFCemail
                 startRangeBeforeCopy = EmailSaver.mailRange.Start;
             }
 
-            Word.Range tblRange = finalRange = oTbl.Cell(row, 1).Range;
+            Word.Range tblRange = oTbl.Cell(row, 1).Range;
+            finalRange = tblRange;
 
             Word.Range mailRange = DuplicateMailRange(endRange);
 
@@ -585,15 +584,13 @@ namespace OEFCemail
             // The top-most message doesn't have any empty newlines before the start
             // For consistent formatting across all messages,
             // Insert two newlines after the time to match the formatting of forwarded/replied messages.
-            // TODO check if necessary. Seems to mess up
             string format = "\n";
             if (topMessage)
             {
                 format += "\n";
             }
 
-            tblRange.InsertBefore(
-            "[Subject: " + sub + "]\n" + t + format);
+            tblRange.InsertBefore("[Subject: " + sub + "]\n" + t + format);
 
             if (!_attachment.Equals(""))
                 tblRange.InsertAfter("\n(Attachment: " + _attachment.Trim(trimChars) + ")"); //attachments
