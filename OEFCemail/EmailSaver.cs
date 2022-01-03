@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows.Forms;
 using JR.Utils.GUI.Forms;
 using Outlook = Microsoft.Office.Interop.Outlook;
@@ -44,7 +45,7 @@ namespace OEFCemail
         private static ErrorLog erLog;
 
         internal EmailSaver(string filename, string subject, string sender, string receiver, string time,
-                            string attachment)
+                            string attachment, ErrorLog errorLog)
         {
             _filename = filename;
             _subject = subject;
@@ -52,8 +53,7 @@ namespace OEFCemail
             _recipient = receiver;
             _time = time;
             _attachment = attachment;
-
-            erLog = new ErrorLog();
+            erLog = errorLog;
         }
 
         internal bool OpenDoc()
@@ -90,13 +90,13 @@ namespace OEFCemail
 
             if (oDoc.Tables.Count == 0)
             {
-                FlexibleMessageBox.Show("Word Document does not include any tables." +
+                FlexibleMessageBox.Show("Word Document does not match the Project Notes template." +
                     "\rCheck to make sure the document you selected is a \"Project Notes\" document." +
                     "\rTerminating Process.");
                 hasTables = false;
             } else if (oDoc.Tables[1].Columns.Count != 2)
             {
-                FlexibleMessageBox.Show("The Table found in the Word Document does not have the right amount of columns." +
+                FlexibleMessageBox.Show("Word Document does not match the Project Notes template." +
                     "\rCheck to make sure the document you selected is a \"Project Notes\" document." +
                     "\rTerminating Process.");
                 hasTables = false;
@@ -126,7 +126,7 @@ namespace OEFCemail
             System.IO.File.Delete((string)path);
         }
 
-        public void SaveToDoc(System.Threading.CancellationToken ct)
+        public void SaveToDoc(CancellationToken ct)
         {
             bool success = true;
             bool haveMoreMessages = true;
@@ -192,7 +192,7 @@ namespace OEFCemail
         #endregion
 
         #region End Process
-        private static void Quit(bool success)
+        private void Quit(bool success)
         {
             
              // if the email saved correctly, scroll the view of the document to the row with the topmost message
@@ -207,23 +207,22 @@ namespace OEFCemail
             }
             else
             {
-                object saveChanges = Word.WdSaveOptions.wdDoNotSaveChanges;
-                oWord.Quit(ref saveChanges);
+                QuitWithoutSave();
             }
         }
 
         // There are multiple points of failure because parsing is inflexible.
         // For any exception, display a message to the user, log it, and terminate EmailSaver
-        public void HandleException(Exception e)
+        // Only ThisAddin can send emails via Outlook
+        public void CancelOnException(Exception e)
         {
-            FlexibleMessageBox.Show($"Exception thrown with message: {e.Message}");
             erLog.WriteErrorLog(e.ToString());
 
-            CloseDoc();
+            QuitWithoutSave();
         }
 
         // Used to quit without saving, i.e. when the Outlook add-in encounters an error.
-        public void CloseDoc()
+        public void QuitWithoutSave()
         {
             // In the case an error occurs when trying to close Word
             try
@@ -272,7 +271,6 @@ namespace OEFCemail
         // int1: beginning range of the next message, also used as the end of the current message's range
         // int2: length of the next message
         // int3: the last paragraph searched for in the mail's range.
-         
         private static (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
         {
             int msgStart = -1;
@@ -339,7 +337,7 @@ namespace OEFCemail
 
             if (!parsed) // Throw an exception if parsing the second time still doesn't work
             {
-                HandleException(new Exception("Error parsing message's sent time\r" +
+                CancelOnException(new Exception("Error parsing message's sent time\r" +
                     "Error occurred at text: \"" + time + "\""));
             }
 
@@ -371,7 +369,7 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                HandleException(exc);
+                CancelOnException(exc);
             }
 
             // if it includes CC'd recipients, add to the list of recipients
@@ -578,7 +576,7 @@ namespace OEFCemail
             }
             catch (Exception exc)
             {
-                HandleException(exc);
+                CancelOnException(exc);
             }
 
             // The top-most message doesn't have any empty newlines before the start

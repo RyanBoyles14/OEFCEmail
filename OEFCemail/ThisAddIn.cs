@@ -1,4 +1,5 @@
 ﻿using System;
+using static OEFCemail.ErrorLog;
 using Outlook = Microsoft.Office.Interop.Outlook;
 
 namespace OEFCemail
@@ -17,9 +18,34 @@ namespace OEFCemail
 
             // create an event handler for if the user selects a new item
             activeExplorer.SelectionChange += new Outlook.ExplorerEvents_10_SelectionChangeEventHandler(Item_SelectionChange);
+
+            // set new ErrorLog for IntakeRibbon to use.
+            Globals.Ribbons.IntakeRibbon.ErrorLog = new ErrorLog();
+            // Create event for when error log is triggered (when user wants to send error report)
+            Globals.Ribbons.IntakeRibbon.ErrorLog.SendErrorReport += ErLog_SendErrorReport;
         }
 
-    private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
+        // When the ErrorLog is used and the user wishes to send an error report, create an email.
+        private void ErLog_SendErrorReport(object sender, SendErrorReportEventArgs args)
+        {
+            Outlook.MailItem email = (Outlook.MailItem)this.Application.CreateItem(Outlook.OlItemType.olMailItem);
+            email.Subject = "OEFCemail Exception: " + args.Time;
+            email.Body = "";
+            email.To = "OEFCemailError@gmail.com";
+            email.Importance = Outlook.OlImportance.olImportanceLow;
+            
+            try
+            {
+                email.Attachments.Add(args.File, Outlook.OlAttachmentType.olByValue);
+                ((Outlook._MailItem)email).Send();
+            }
+            catch
+            {
+                email.Delete();
+            }
+        }
+
+        private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             // Note: Outlook no longer raises this event. If you have code that 
             // must run when Outlook shuts down, see https://go.microsoft.com/fwlink/?LinkId=506785

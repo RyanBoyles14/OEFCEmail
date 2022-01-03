@@ -22,7 +22,16 @@ namespace OEFCemail
 
         private Outlook.MailItem mailItem;
         private CancellationTokenSource tokenSource;
-        private bool inProcess;
+        private bool inProcess = false;
+
+        private ErrorLog erLog;
+
+        public ErrorLog ErrorLog
+        {
+            set { erLog = value; }
+            get { return erLog; }
+        }
+
         private void IntakeRibbon_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -140,6 +149,11 @@ namespace OEFCemail
                         else
                             sub = mailItem.Subject;
 
+                        string send = GetSender();
+                        string recip = GetRecipients();
+                        string time = mailItem.ReceivedTime.ToString();
+                        string att = GetAttachments();
+
                         OpenFileDialog openFileDialog = new OpenFileDialog
                         {
                             Filter = "Word Documents|*.docx",
@@ -155,15 +169,10 @@ namespace OEFCemail
                         {
                             if (filename.Contains("Notes.doc"))
                             {
-                                string send = GetSender();
-                                string recip = GetRecipients();
-                                string time = mailItem.ReceivedTime.ToString();
-                                string att = GetAttachments();
-
                                 tokenSource = new CancellationTokenSource();
                                 var cancellationToken = tokenSource.Token;
 
-                                EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub, send, recip, time, att); ;
+                                EmailSaver emailSaver = new EmailSaver(openFileDialog.FileName, sub, send, recip, time, att, erLog); ;
                                 bool docOpen = false;
 
                                 // run the EmailSaver and all Microsoft Word functionality asychronously
@@ -179,7 +188,7 @@ namespace OEFCemail
                                     }
                                     else
                                     {
-                                        emailSaver.CloseDoc();
+                                        emailSaver.QuitWithoutSave();
                                     }
                                 }, cancellationToken);
 
@@ -190,16 +199,26 @@ namespace OEFCemail
                                 {
                                     await task;
                                 }
-                                catch (OperationCanceledException)
+                                catch (Exception ex)
                                 {
-                                    if (docOpen)
-                                        emailSaver.CloseDoc();
+                                    if (docOpen && ex is OperationCanceledException)
+                                    {
+                                        emailSaver.QuitWithoutSave();
+                                        FlexibleMessageBox.Show("Process Ended.");
+                                    } 
+                                    else if(!docOpen && (uint)ex.HResult != 0x800A16C1)
+                                    {
+                                        // if the error does not involve a missing Object error because the document closed
+                                        erLog.WriteErrorLog(ex.ToString());
+                                    }
 
-                                    FlexibleMessageBox.Show("Process Cancelled.");
                                 }
                                 finally
                                 {
                                     tokenSource.Dispose();
+
+                                    if (erLog.IsException)
+                                        erLog.ErrorReport();
                                 }
                             }
                             else
