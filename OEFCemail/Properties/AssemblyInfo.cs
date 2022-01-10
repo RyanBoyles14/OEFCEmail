@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("OEFCemail")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Email Intake Add-In for Microsoft Outlook")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Optimized Energy & Facilities Consulting, Inc.")]
 [assembly: AssemblyProduct("OEFCemail")]
-[assembly: AssemblyCopyright("Copyright ©  2021")]
+[assembly: AssemblyCopyright("Copyright ©  2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

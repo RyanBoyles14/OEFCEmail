@@ -214,7 +214,7 @@ namespace OEFCemail
         // There are multiple points of failure because parsing is inflexible.
         // For any exception, display a message to the user, log it, and terminate EmailSaver
         // Only ThisAddin can send emails via Outlook
-        public void CancelOnException(Exception e)
+        private void CancelOnException(Exception e)
         {
             erLog.WriteErrorLog(e.ToString());
 
