@@ -31,7 +31,7 @@ namespace OEFCemail
             Outlook.MailItem email = (Outlook.MailItem)this.Application.CreateItem(Outlook.OlItemType.olMailItem);
             email.Subject = "OEFCemail Exception: " + args.Time;
             email.Body = "";
-            email.To = "OEFCemailError@gmail.com";
+            email.To = "OEFCEmail@gmail.com";
             email.Importance = Outlook.OlImportance.olImportanceLow;
             
             try

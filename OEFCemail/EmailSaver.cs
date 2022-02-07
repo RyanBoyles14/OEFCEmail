@@ -262,6 +262,9 @@ namespace OEFCemail
                 str = abbr.FirstOrDefault(s => sub.ToUpper().StartsWith(s));
             }
 
+            if (sub.Trim(' ').Equals(""))
+                sub = "(no subject)";
+
             return sub;
         }
 
