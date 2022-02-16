@@ -203,7 +203,6 @@ namespace OEFCemail
                 oDoc.ActiveWindow.WindowState = Microsoft.Office.Interop.Word.WdWindowState.wdWindowStateMaximize;
                 oDoc.ActiveWindow.Visible = true;
                 oDoc.Activate();
-                oWord.Activate();
             }
             else
             {

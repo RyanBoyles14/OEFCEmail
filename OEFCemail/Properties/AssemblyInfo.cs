@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("OEFCemail")]
+[assembly: AssemblyTitle("OEFCEmail")]
 [assembly: AssemblyDescription("Email Intake Add-In for Microsoft Outlook")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Optimized Energy & Facilities Consulting, Inc.")]
-[assembly: AssemblyProduct("OEFCemail")]
+[assembly: AssemblyProduct("OEFCEmail")]
 [assembly: AssemblyCopyright("Copyright ©  2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
