@@ -113,17 +113,25 @@ namespace OEFCemail
         // After inserting the file, delete the temporary file
         public void AppendToDoc(Outlook.MailItem item)
         {
-            object path = System.IO.Path.GetDirectoryName(_filename) + "\\(temporary).doc";
-            object format = Word.WdSaveFormat.wdFormatDocument;
-            Word.Document mailInspector = item.GetInspector.WordEditor as Word.Document;
-
-            mailInspector.SaveAs2(ref path, ref format);
+            // save the MailItem to a temporary document, preserving the styling of the original email
+            string path = System.IO.Path.GetDirectoryName(_filename) + "\\(temporary).doc";
+            object format = Outlook.OlSaveAsType.olDoc;
+            item.SaveAs(path, format);
 
             mailStartRange = oDoc.Content.End - 1;
             mailRange = oDoc.Range(mailStartRange, ref missing);
             mailRange.InsertFile((string)path, ref missing, ref missing, ref missing, ref missing);
 
-            System.IO.File.Delete((string)path);
+
+            // delete the temporary document
+            try
+            {
+                System.IO.File.Delete((string)path);
+            }
+            catch(Exception exc)
+            {
+                CancelOnException(new Exception("Couldn't delete temporary file."));
+            }
         }
 
         public void SaveToDoc(CancellationToken ct)
