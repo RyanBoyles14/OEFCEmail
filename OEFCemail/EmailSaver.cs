@@ -122,13 +122,12 @@ namespace OEFCemail
             mailRange = oDoc.Range(mailStartRange, ref missing);
             mailRange.InsertFile((string)path, ref missing, ref missing, ref missing, ref missing);
 
-
             // delete the temporary document
             try
             {
                 System.IO.File.Delete((string)path);
             }
-            catch(Exception exc)
+            catch
             {
                 CancelOnException(new Exception("Couldn't delete temporary file."));
             }
@@ -149,10 +148,21 @@ namespace OEFCemail
 
             while (haveMoreMessages)
             {
+                if (isTopMessage)
+                {
+                    int msgPropEnd;
+                    //TODO: Revise Regex
+                    (_, msgPropEnd, lastSearchedParagraph) = GetMsgProperties(0);
+
+                    // move mailStartRange to the end of the next message's info
+                    mailStartRange = msgPropEnd;
+                }
+
                 // if there are any other messages in the email chain, get the properities of its range.
                 // currentMsgEnd = beginning range of the next message, also used as the end of the current message's range
-                // nextMsgLength = length of the next messages segment's 
-                (int currentMsgEnd, int nextMsgLength, int paragraph) = GetNextMsgProperties(lastSearchedParagraph);
+                // nextMsgPropEnd = end range of the next messages information segment (i.e., To:, From:)
+                (int currentMsgEnd, int nextMsgPropEnd, int paragraph) = GetMsgProperties(lastSearchedParagraph);
+                int nextMsgPropLength = nextMsgPropEnd - currentMsgEnd;
                 lastSearchedParagraph = paragraph; // the last paragraph searched for in the mail's range.
 
                 // if no other messages
@@ -176,13 +186,13 @@ namespace OEFCemail
                 }
 
                 // write to Word Doc
-                InsertInRow(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, currentMsgEnd, isTopMessage);
+                InsertInRow(sub, send, rec, dt.ToString("MM-dd-yy h:mmtt"), row, currentMsgEnd);
 
                 // prepare for next cycle by getting the next message's properties.
                 if (haveMoreMessages)
                 {
                     isTopMessage = false;
-                    (string s1, string s2, string s3) = ParseNextMsgInfo(nextMsgLength);
+                    (string s1, string s2, string s3) = ParseNextMsgInfo(nextMsgPropLength);
                     send = s1;
                     dt = ParseTime(s2, false);
                     rec = s3;
@@ -275,49 +285,60 @@ namespace OEFCemail
             return sub;
         }
 
-        
-        // Using Regex, find any messages in a chain, either forwarded or replied messages
-        // Return a 3-integer Tuple with the properties of the next forwarded/replied message within the email chain
-        // int1: beginning range of the next message, also used as the end of the current message's range
-        // int2: length of the next message
-        // int3: the last paragraph searched for in the mail's range.
-        private static (int, int, int) GetNextMsgProperties(int lastSearchedParagraph)
+        // Using Regex, find any instance of a message's information (i.e., To, From)
+        // Usually, this info is found at the beginning of an email, or at the start of forwarded/replied messages within the email chain
+        // msgPropStart: beginning range of the next message, also used as the end of the current message's range
+        // msgPropEnd: end of the next message's information
+        // lastSearchedParagraph: Keep track of last paragraph searched.
+        private static (int, int, int) GetMsgProperties(int lastSearchedParagraph)
         {
-            int msgStart = -1;
-            int msgLength = -1;
+            int msgPropStart = -1;
+            int msgPropEnd = -1;
 
-
-            // Using this format to find other messages in a chain
+            // Regex based on this typical format
             // From: X
             // Sent: X
             // To: X
-            // Cc: X - this is optional
+            // Cc: X (optional)
             // Subject: X
-            string rExp = @"(From: [^\n\r\v]+[\n\r\v])" +
-                @"(Sent: [^\n\r\v]+[\n\r\v])" +
-                @"(To: [^\n\r\v]+[\n\r\v])?" +
-                @"(Cc: [^\n\r\v]+[\n\r\v])?" +
-                @"(Subject: [^\n\r\v]*[\n\r\v])";
+            string rExp;
+
+            if (lastSearchedParagraph > 0)
+            {
+                rExp = @"(From:[^\n\r\v]+[\n\r\v])" +
+                @"(Sent:[^\n\r\v]+[\n\r\v])" +
+                @"(To:[^\n\r\v]+[\n\r\v])?" +
+                @"(Cc:[^\n\r\v]+[\n\r\v])?" +
+                @"(Subject:[^\n\r\v]*[\n\r\v])";
+            }
+            else
+            {
+                // the first instance of message properties is segmented into multiple paragraphs
+                // in this case, we only need to know the location of the end of the properties,
+                // so we can regex for the last line only
+                rExp = @"(Subject:[^\n\r\v]*[\n\r\v])";
+            }
 
             Word.Paragraphs paragraphs = mailRange.Paragraphs;
 
             // The message property info should all be within the same paragraph.
             // Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
             // Adding 1 to lastSearchedParagraph, since Word object indices are 1-based, not 0-based
-            for (int i = lastSearchedParagraph + 1; i <= paragraphs.Count; i++)
+            for (int i = lastSearchedParagraph + 1; i <= mailRange.Paragraphs.Count; i++)
             {
                 Word.Paragraph p = paragraphs[i];
                 Match match = Regex.Match(p.Range.Text, rExp);
+
                 if (match.Success)
                 {
-                    msgStart = p.Range.Start;
-                    msgLength = p.Range.End - msgStart;
+                    msgPropStart = p.Range.Start;
+                    msgPropEnd = p.Range.End;
                     lastSearchedParagraph = i;
                     break;
                 }
             }
 
-            return (msgStart, msgLength, lastSearchedParagraph);
+            return (msgPropStart, msgPropEnd, lastSearchedParagraph);
         }
 
         // parse the time based on the typical formats from Outlook emails
@@ -357,6 +378,8 @@ namespace OEFCemail
         private (string, string, string) ParseNextMsgInfo(int length)
         {
             Word.Range mailRange = DuplicateMailRange(mailStartRange + length);
+
+            // move mailStartRange to the end of the next message's info
             mailStartRange += length;
 
             string[] split = mailRange.Text.Split('\v');
@@ -518,7 +541,7 @@ namespace OEFCemail
         #endregion
 
         #region Insert into Row
-        private void InsertInRow(string sub, string send, string rec, string t, int row, int endRange, bool topMessage)
+        private void InsertInRow(string sub, string send, string rec, string t, int row, int endRange)
         {
             Word.Table oTbl = oDoc.Tables[1];
 
@@ -589,23 +612,16 @@ namespace OEFCemail
                 CancelOnException(exc);
             }
 
-            // The top-most message doesn't have any empty newlines before the start
-            // For consistent formatting across all messages,
-            // Insert two newlines after the time to match the formatting of forwarded/replied messages.
-            string format = "\n";
-            if (topMessage)
-            {
-                format += "\n";
-            }
-
-            tblRange.InsertBefore("[Subject: " + sub + "]\n" + t + format);
+            tblRange.InsertBefore("[Subject: " + sub + "]\n" + t + "\n");
 
             if (!_attachment.Equals(""))
                 tblRange.InsertAfter("\n(Attachment: " + _attachment.Trim(trimChars) + ")"); //attachments
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
-            // Copying the mail message into the row may cause the ranges for the mail messages to shift. Update as needed
+            // Move the mailStartRange to the end of the current message
+            // Copying the mail message into the row may cause the ranges for the mail messages to shift,
+            // so move the mailStartRange accordingly
             if (startRangeBeforeCopy != EmailSaver.mailRange.Start)
             {
                 diff = EmailSaver.mailRange.Start - startRangeBeforeCopy;
