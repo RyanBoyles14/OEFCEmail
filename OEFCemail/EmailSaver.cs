@@ -613,9 +613,27 @@ namespace OEFCemail
             }
 
             tblRange.InsertBefore("[Subject: " + sub + "]\n" + t + "\n");
-
+            for(int i = 1; i <= 2; i++)
+            {
+                Word.Paragraph paragraph = tblRange.Paragraphs[i];
+                Word.Range subjectRange = paragraph.Range;
+                paragraph.Space1();
+                paragraph.SpaceAfter = 0;
+                paragraph.SpaceBefore = 0;
+                subjectRange.set_Style("Normal");
+                subjectRange.Font.Size = 10;
+                subjectRange.Font.Name = "Arial";
+                subjectRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphLeft;
+            }
+            
             if (!_attachment.Equals(""))
+            {
                 tblRange.InsertAfter("\n(Attachment: " + _attachment.Trim(trimChars) + ")"); //attachments
+                Word.Range attachmentRange = tblRange.Paragraphs[tblRange.Paragraphs.Count].Range;
+                attachmentRange.Font.Size = 10;
+                attachmentRange.Font.Name = "Arial";
+                attachmentRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphLeft;
+            }
 
             oTbl.Cell(row, 2).Range.Text = send + " to " + rec; //sender to receiver
 
