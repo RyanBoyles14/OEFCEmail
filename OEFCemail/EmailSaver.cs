@@ -295,16 +295,17 @@ namespace OEFCemail
             int msgPropStart = -1;
             int msgPropEnd = -1;
 
-            // Regex based on this typical format
-            // From: X
-            // Sent: X
-            // To: X
-            // Cc: X (optional)
-            // Subject: X
+            
             string rExp;
 
             if (lastSearchedParagraph > 0)
             {
+                // Regex based on this typical format
+                // From: X
+                // Sent: X
+                // To: X
+                // Cc: X (optional)
+                // Subject: X
                 rExp = @"(From:[^\n\r\v]+[\n\r\v])" +
                 @"(Sent:[^\n\r\v]+[\n\r\v])" +
                 @"(To:[^\n\r\v]+[\n\r\v])?" +
@@ -313,13 +314,24 @@ namespace OEFCemail
             }
             else
             {
-                // the first instance of message properties is segmented into multiple paragraphs
-                // in this case, we only need to know the location of the end of the properties,
-                // so we can regex for the last line only
-                rExp = @"(Subject:[^\n\r\v]*[\n\r\v])";
+                // Regex based on this typical format
+                // From:X
+                // Sent:X
+                // To:X
+                // Cc:X (optional)
+                // Subject:X
+                // Attachments:X
+
+                // Only need to match until we get to the last line of the above format,
+                // so we use OR on multiple expressions
+                rExp = @"(To:[^\n\r\v]+[\n\r\v])|" +
+                @"(Cc:[^\n\r\v]+[\n\r\v])|" +
+                @"(Subject:[^\n\r\v]+[\n\r\v])|" +
+                @"(Attachments:[^\n\r\v]+[\n\r\v])";
             }
 
             Word.Paragraphs paragraphs = mailRange.Paragraphs;
+            bool foundMatch = false;
 
             // The message property info should all be within the same paragraph.
             // Need to search paragraph by paragraph to get the specific Range of the paragraph. Using Range.Text index would not work
@@ -331,11 +343,17 @@ namespace OEFCemail
 
                 if (match.Success)
                 {
+                    foundMatch = true;
                     msgPropStart = p.Range.Start;
                     msgPropEnd = p.Range.End;
                     lastSearchedParagraph = i;
+                }
+                else if (foundMatch)
+                {
+                    // in case 
                     break;
                 }
+                    
             }
 
             return (msgPropStart, msgPropEnd, lastSearchedParagraph);
